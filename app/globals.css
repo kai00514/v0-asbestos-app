@@ -166,4 +166,12 @@
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  /* 横スクロール時のスクロールバーを非表示にするユーティリティクラス */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

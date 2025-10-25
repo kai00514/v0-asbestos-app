@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { AccountSelector } from "@/components/dashboard/account-selector"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { DonutChartCard } from "@/components/dashboard/donut-chart-card"
 import { UsageStatusCard } from "@/components/dashboard/usage-status-card"
@@ -17,10 +18,11 @@ export default async function DashboardPage() {
   // }
 
   return (
-    <div className="min-h-screen bg-gray-200 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
       <DashboardHeader />
 
       <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
+        <AccountSelector />
         <DashboardTabs />
 
         <div className="space-y-4">

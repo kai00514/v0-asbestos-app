@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { CompletionResult } from "@/components/ai/completion-result"
 import { CompletionActions } from "@/components/ai/completion-actions"
 import { BottomNav } from "@/components/layout/bottom-nav"
+import { WaveHeader } from "@/components/layout/wave-header"
 
 export default async function AICompletePage({
   searchParams,
@@ -20,12 +21,8 @@ export default async function AICompletePage({
   const detectionId = searchParams.id || "0004"
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 pb-20 md:pb-0">
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
-          <h1 className="text-xl font-bold text-gray-900">AI判定完了</h1>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
+      <WaveHeader title="AI判定完了" showLogo={false} />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         <CompletionResult detectionId={detectionId} />

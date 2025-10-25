@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Bell, Menu } from "lucide-react"
+import { Bell, Menu, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const notifications = [
   {
@@ -37,8 +38,15 @@ const notifications = [
   },
 ]
 
-export function DashboardHeader() {
+interface WaveHeaderProps {
+  title?: string
+  showBackButton?: boolean
+  showLogo?: boolean
+}
+
+export function WaveHeader({ title, showBackButton = false, showLogo = true }: WaveHeaderProps) {
   const [unreadCount, setUnreadCount] = useState(notifications.filter((n) => !n.read).length)
+  const router = useRouter()
 
   return (
     <header className="relative bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-500 overflow-hidden">
@@ -57,17 +65,32 @@ export function DashboardHeader() {
       <div className="relative px-4 pt-4 pb-24">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2.5}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">VizyAs</span>
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 rounded-full"
+                onClick={() => router.back()}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+            {showLogo && (
+              <>
+                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <span className="text-white font-bold text-xl tracking-tight">VizyAs</span>
+              </>
+            )}
+            {title && !showLogo && <h1 className="text-white font-bold text-xl">{title}</h1>}
           </div>
 
           <div className="flex items-center gap-1">
@@ -120,6 +143,11 @@ export function DashboardHeader() {
             </Button>
           </div>
         </div>
+        {title && showLogo && (
+          <div className="mt-4">
+            <h1 className="text-white font-bold text-2xl">{title}</h1>
+          </div>
+        )}
       </div>
     </header>
   )
