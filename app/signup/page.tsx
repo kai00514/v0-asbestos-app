@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [name, setName] = useState("")
   const [companyName, setCompanyName] = useState("")
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -36,95 +37,57 @@ export default function SignupPage() {
       return
     }
 
+    if (!/[A-Z]/.test(password)) {
+      setError("パスワードには大文字を含める必要があります")
+      return
+    }
+
+    if (!/[a-z]/.test(password)) {
+      setError("パスワードには小文字を含める必要があります")
+      return
+    }
+
+    if (!/[0-9]/.test(password)) {
+      setError("パスワードには数字を含める必要があります")
+      return
+    }
+
+    if (!agreedToTerms) {
+      setError("利用規約に同意してください")
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const supabase = getSupabaseBrowserClient()
-
-      // Supabase Authでユーザー作成
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            name,
-          },
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          companyName,
+          agreedToTerms, // agreedToTermsを追加
+        }),
       })
 
-      if (authError) {
-        if (authError.message.includes("already registered")) {
-          setError("このメールアドレスは既に登録されています")
-        } else {
-          setError(authError.message)
-        }
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "アカウント作成に失敗しました")
         setIsLoading(false)
         return
       }
 
-      if (!authData.user) {
-        setError("アカウント作成に失敗しました")
-        setIsLoading(false)
-        return
+      // 登録成功後、オンボーディングまたはダッシュボードへリダイレクト
+      if (data.redirectTo) {
+        router.push(data.redirectTo)
+      } else {
+        router.push("/onboarding")
       }
-
-      // 会社レコード作成
-      const { data: company, error: companyError } = await supabase
-        .from("companies")
-        .insert({
-          name: companyName,
-          owner_id: authData.user.id,
-        })
-        .select()
-        .single()
-
-      if (companyError) {
-        console.error("[v0] Company creation error:", companyError)
-        setError("会社情報の作成に失敗しました")
-        setIsLoading(false)
-        return
-      }
-
-      // ユーザーテーブルに登録（Owner権限）
-      const { error: userError } = await supabase.from("users").insert({
-        id: authData.user.id,
-        email,
-        name,
-        company_id: company.id,
-        role: "owner",
-        is_active: true,
-        onboarding_completed: false,
-      })
-
-      if (userError) {
-        console.error("[v0] User creation error:", userError)
-        setError("ユーザー情報の作成に失敗しました")
-        setIsLoading(false)
-        return
-      }
-
-      // ユーザー設定初期化
-      await supabase.from("user_settings").insert({
-        user_id: authData.user.id,
-        notification_email: true,
-        notification_push: false,
-      })
-
-      // トライアルサブスクリプション作成
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 30)
-
-      await supabase.from("subscriptions").insert({
-        company_id: company.id,
-        plan_name: "trial",
-        status: "trialing",
-        monthly_limit: 50,
-        trial_ends_at: trialEndDate.toISOString(),
-      })
-
-      // オンボーディングへリダイレクト
-      router.push("/onboarding")
     } catch (err) {
       console.error("[v0] Signup error:", err)
       setError("アカウント作成中にエラーが発生しました")
@@ -202,13 +165,14 @@ export default function SignupPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="8文字以上"
+                placeholder="8文字以上（大文字・小文字・数字を含む）"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="h-11"
                 disabled={isLoading}
               />
+              <p className="text-xs text-gray-500">※ 大文字、小文字、数字をそれぞれ1文字以上含めてください</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">パスワード（確認）</Label>
@@ -222,6 +186,27 @@ export default function SignupPage() {
                 className="h-11"
                 disabled={isLoading}
               />
+            </div>
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="terms"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                disabled={isLoading}
+              />
+              <label
+                htmlFor="terms"
+                className="text-sm text-gray-700 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                <Link href="/terms" className="text-emerald-600 hover:underline" target="_blank">
+                  利用規約
+                </Link>
+                と
+                <Link href="/privacy" className="text-emerald-600 hover:underline" target="_blank">
+                  プライバシーポリシー
+                </Link>
+                に同意します
+              </label>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
