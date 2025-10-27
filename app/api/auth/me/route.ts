@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // トークンからユーザーIDを取得
     const {
       data: { user },
       error: userError,
@@ -28,6 +27,21 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("[v0] Fetching user data for:", user.id)
+    console.log("[v0] Auth email_confirmed_at:", user.email_confirmed_at)
+
+    if (user.email_confirmed_at) {
+      const { error: updateError } = await supabaseAdmin
+        .from("users")
+        .update({ email_confirmed: true })
+        .eq("id", user.id)
+        .eq("email_confirmed", false) // まだ更新されていない場合のみ
+
+      if (updateError) {
+        console.error("[v0] Error syncing email_confirmed:", updateError)
+      } else {
+        console.log("[v0] Synced email_confirmed to true for user:", user.id)
+      }
+    }
 
     const { data: userData, error: dbError } = await supabaseAdmin
       .from("users")
@@ -51,9 +65,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "設定情報の取得に失敗しました" }, { status: 500 })
     }
 
+    const emailConfirmed = !!user.email_confirmed_at
+
     return NextResponse.json({
       is_active: userData.is_active,
-      email_confirmed: userData.email_confirmed,
+      email_confirmed: emailConfirmed,
       onboarding_completed: settingsData.onboarding_completed,
     })
   } catch (error) {

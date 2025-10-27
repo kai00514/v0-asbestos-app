@@ -65,13 +65,6 @@ export default function LoginPage() {
       const userData = await response.json()
       console.log("[v0] User data:", userData)
 
-      if (!userData.email_confirmed) {
-        setError("メールアドレスの確認が完了していません。受信トレイを確認してください。")
-        await supabase.auth.signOut()
-        setIsLoading(false)
-        return
-      }
-
       if (!userData.is_active) {
         setError("アカウントが無効化されています")
         await supabase.auth.signOut()
