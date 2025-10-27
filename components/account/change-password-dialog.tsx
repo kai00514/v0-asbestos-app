@@ -3,12 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { changePassword } from "@/app/actions/account"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false)
@@ -18,6 +20,7 @@ export function ChangePasswordDialog() {
     newPassword: "",
     confirmPassword: "",
   })
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +35,6 @@ export function ChangePasswordDialog() {
       return
     }
 
-    // 新しいパスワードのチェックを追加
     if (formData.currentPassword === formData.newPassword) {
       toast.error("新しいパスワードは現在のパスワードと異なるものを入力してください")
       return
@@ -42,13 +44,16 @@ export function ChangePasswordDialog() {
 
     try {
       await changePassword(formData.currentPassword, formData.newPassword)
-      toast.success("パスワードを変更しました")
-      setOpen(false)
-      setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+
+      const supabase = getSupabaseBrowserClient()
+      await supabase.auth.signOut()
+
+      toast.success("パスワードが変更されました。新しいパスワードでログインしてください。")
+
+      router.push("/login")
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "パスワード変更に失敗しました"
       toast.error(errorMessage)
-    } finally {
       setLoading(false)
     }
   }

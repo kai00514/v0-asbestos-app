@@ -1,12 +1,45 @@
 "use server"
 
+import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
+import type { Database } from "@/lib/types/database.types"
 
 const getAdminClient = () => {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   })
+}
+
+const getAuthenticatedUser = async () => {
+  const cookieStore = await cookies()
+
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        },
+      },
+    },
+  )
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    throw new Error("認証が必要です")
+  }
+
+  return { user, supabase }
 }
 
 export async function updateAccountInfo(data: {
@@ -17,12 +50,10 @@ export async function updateAccountInfo(data: {
 }) {
   const supabaseAdmin = getAdminClient()
 
-  // ユーザー名更新
   const { error: userError } = await supabaseAdmin.from("users").update({ name: data.userName }).eq("id", data.userId)
 
   if (userError) throw userError
 
-  // 会社名更新
   const { error: companyError } = await supabaseAdmin
     .from("companies")
     .update({ name: data.companyName })
@@ -34,64 +65,66 @@ export async function updateAccountInfo(data: {
 }
 
 export async function changeEmail(newEmail: string) {
+  const { user } = await getAuthenticatedUser()
   const supabaseAdmin = getAdminClient()
 
-  const {
-    data: { user },
-  } = await supabaseAdmin.auth.admin.getUserById((await supabaseAdmin.auth.getUser()).data.user?.id || "")
-
-  if (!user) throw new Error("User not found")
+  console.log("[v0] Changing email for user:", user.id)
 
   const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
     email: newEmail,
   })
 
-  if (error) throw error
+  if (error) {
+    console.log("[v0] Email change error:", error)
+    throw error
+  }
+
+  console.log("[v0] Email changed successfully")
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
-  const supabaseAdmin = getAdminClient()
+  const { user, supabase } = await getAuthenticatedUser()
+
+  console.log("[v0] Changing password for user:", user.id)
 
   if (currentPassword === newPassword) {
     throw new Error("新しいパスワードは現在のパスワードと異なるものを入力してください")
   }
 
-  // 現在のパスワードで再認証
-  const {
-    data: { user },
-  } = await supabaseAdmin.auth.getUser()
+  if (!user.email) {
+    throw new Error("ユーザー情報が見つかりません")
+  }
 
-  if (!user?.email) throw new Error("User not found")
-
-  const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+  const { error: signInError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,
   })
 
-  if (signInError) throw new Error("現在のパスワードが正しくありません")
+  if (signInError) {
+    console.log("[v0] Re-authentication error:", signInError.message)
+    throw new Error("現在のパスワードが正しくありません")
+  }
 
-  // パスワード更新
-  const { error } = await supabaseAdmin.auth.updateUser({
+  const supabaseAdmin = getAdminClient()
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
     password: newPassword,
   })
 
   if (error) {
-    if (error.message.includes("same_password")) {
-      throw new Error("新しいパスワードは現在のパスワードと異なるものを入力してください")
-    }
+    console.log("[v0] Password update error:", error.message)
     throw error
   }
+
+  console.log("[v0] Password changed successfully")
+
+  return { success: true }
 }
 
 export async function inviteMember(data: { email: string; name: string; role: "owner" | "member" }) {
+  const { user } = await getAuthenticatedUser()
   const supabaseAdmin = getAdminClient()
 
-  // 現在のユーザーの会社IDを取得
-  const {
-    data: { user },
-  } = await supabaseAdmin.auth.getUser()
-
-  if (!user) throw new Error("Not authenticated")
+  console.log("[v0] Inviting member, inviter user ID:", user.id)
 
   const { data: currentUser } = await supabaseAdmin.from("users").select("company_id, role").eq("id", user.id).single()
 
@@ -99,10 +132,9 @@ export async function inviteMember(data: { email: string; name: string; role: "o
     throw new Error("Only owners can invite members")
   }
 
-  // 招待トークン生成
   const token = crypto.randomUUID()
   const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7) // 7日間有効
+  expiresAt.setDate(expiresAt.getDate() + 7)
 
   const { error } = await supabaseAdmin.from("invite_tokens").insert({
     company_id: currentUser.company_id,
@@ -114,7 +146,6 @@ export async function inviteMember(data: { email: string; name: string; role: "o
 
   if (error) throw error
 
-  // TODO: 招待メール送信（後で実装）
   console.log("[v0] Invite email would be sent to:", data.email, "with token:", token)
 
   revalidatePath("/account")
