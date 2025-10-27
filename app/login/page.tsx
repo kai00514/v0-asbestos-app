@@ -47,9 +47,16 @@ export default function LoginPage() {
       // ユーザー情報を取得してリダイレクト先を決定
       const { data: userData } = await supabase
         .from("users")
-        .select("onboarding_completed, is_active")
+        .select("onboarding_completed, is_active, email_confirmed")
         .eq("id", data.user.id)
         .single()
+
+      if (!userData?.email_confirmed) {
+        setError("メールアドレスの確認が完了していません。受信トレイを確認してください。")
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
+      }
 
       if (!userData?.is_active) {
         setError("アカウントが無効化されています")

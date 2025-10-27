@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -26,6 +27,23 @@ export async function GET(request: NextRequest) {
     )
 
     await supabase.auth.exchangeCodeForSession(code)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      // サービスロールクライアントでRLSをバイパス
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } },
+      )
+
+      await supabaseAdmin.from("users").update({ email_confirmed: true }).eq("id", user.id)
+
+      console.log("[v0] Email confirmed for user:", user.id)
+    }
   }
 
   // ダッシュボードへリダイレクト
