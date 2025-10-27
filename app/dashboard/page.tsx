@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { getDashboardStats, getTeamMembers } from "@/lib/api/dashboard"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -18,19 +19,22 @@ export default async function DashboardPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // if (!user) {
-  //   redirect("/login")
-  // }
+  if (!user) {
+    redirect("/login")
+  }
 
-  const demoUserId = "10000000-0000-0000-0000-000000000001"
-  const demoCompanyId = "00000000-0000-0000-0000-000000000001"
+  const { data: userData } = await supabase.from("users").select("company_id").eq("id", user.id).maybeSingle()
+
+  if (!userData?.company_id) {
+    redirect("/login")
+  }
 
   const selectedUserId = searchParams.user || "all"
   const period = searchParams.period || "month"
 
   const [stats, teamMembers] = await Promise.all([
-    getDashboardStats(demoCompanyId, selectedUserId === "all" ? undefined : selectedUserId, period),
-    getTeamMembers(demoCompanyId),
+    getDashboardStats(userData.company_id, selectedUserId === "all" ? undefined : selectedUserId, period),
+    getTeamMembers(userData.company_id),
   ])
 
   return (

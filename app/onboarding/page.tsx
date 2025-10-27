@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
 
 const steps = [
   {
@@ -55,17 +56,37 @@ const steps = [
 export default function OnboardingPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
+  const [isCompleting, setIsCompleting] = useState(false)
+
+  const handleComplete = async () => {
+    setIsCompleting(true)
+    try {
+      const response = await fetch("/api/auth/complete-onboarding", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        throw new Error("オンボーディングの完了に失敗しました")
+      }
+
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("[v0] Onboarding completion error:", error)
+      toast.error("エラーが発生しました。もう一度お試しください。")
+      setIsCompleting(false)
+    }
+  }
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
-      router.push("/dashboard")
+      handleComplete()
     }
   }
 
   const handleSkip = () => {
-    router.push("/dashboard")
+    handleComplete()
   }
 
   const progress = ((currentStep + 1) / steps.length) * 100
@@ -94,15 +115,29 @@ export default function OnboardingPage() {
           </div>
           <div className="flex gap-3">
             {currentStep > 0 && (
-              <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)} className="flex-1 h-11">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep(currentStep - 1)}
+                className="flex-1 h-11"
+                disabled={isCompleting}
+              >
                 戻る
               </Button>
             )}
-            <Button onClick={handleNext} className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700">
-              {currentStep === steps.length - 1 ? "始める" : "次へ"}
+            <Button
+              onClick={handleNext}
+              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+              disabled={isCompleting}
+            >
+              {isCompleting ? "処理中..." : currentStep === steps.length - 1 ? "始める" : "次へ"}
             </Button>
           </div>
-          <Button variant="ghost" onClick={handleSkip} className="w-full text-gray-600 hover:text-gray-800">
+          <Button
+            variant="ghost"
+            onClick={handleSkip}
+            className="w-full text-gray-600 hover:text-gray-800"
+            disabled={isCompleting}
+          >
             スキップ
           </Button>
         </CardContent>
