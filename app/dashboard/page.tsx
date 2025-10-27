@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { getDashboardStats, getTeamMembers } from "@/lib/api/dashboard"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { AccountSelector } from "@/components/dashboard/account-selector"
@@ -23,9 +24,30 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  const { data: userData } = await supabase.from("users").select("company_id").eq("id", user.id).maybeSingle()
+  const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  })
 
-  if (!userData?.company_id) {
+  const { data: userData } = await supabaseAdmin
+    .from("users")
+    .select("company_id, email_confirmed")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  console.log("[v0] Dashboard - User data:", userData)
+
+  if (!userData) {
+    console.error("[v0] Dashboard - User not found in public.users")
+    redirect("/login")
+  }
+
+  if (!userData.email_confirmed) {
+    console.log("[v0] Dashboard - Email not confirmed, redirecting to login")
+    redirect("/login")
+  }
+
+  if (!userData.company_id) {
+    console.error("[v0] Dashboard - Company ID not found")
     redirect("/login")
   }
 

@@ -72,6 +72,13 @@ export default function LoginPage() {
         return
       }
 
+      if (!userData.email_confirmed) {
+        setError("メールアドレスの確認が完了していません。受信トレイを確認してください。")
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
+      }
+
       // オンボーディング完了状態に応じてリダイレクト
       if (userData.onboarding_completed) {
         router.push("/dashboard")
