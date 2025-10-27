@@ -44,12 +44,20 @@ export default function LoginPage() {
         return
       }
 
-      // ユーザー情報を取得してリダイレクト先を決定
       const { data: userData } = await supabase
         .from("users")
-        .select("onboarding_completed, is_active, email_confirmed")
+        .select("is_active, email_confirmed")
         .eq("id", data.user.id)
-        .single()
+        .maybeSingle()
+
+      const { data: settingsData } = await supabase
+        .from("user_settings")
+        .select("onboarding_completed")
+        .eq("user_id", data.user.id)
+        .maybeSingle()
+
+      console.log("[v0] User data:", userData)
+      console.log("[v0] Settings data:", settingsData)
 
       if (!userData?.email_confirmed) {
         setError("メールアドレスの確認が完了していません。受信トレイを確認してください。")
@@ -66,7 +74,7 @@ export default function LoginPage() {
       }
 
       // オンボーディング完了状態に応じてリダイレクト
-      if (userData?.onboarding_completed) {
+      if (settingsData?.onboarding_completed) {
         router.push("/dashboard")
       } else {
         router.push("/onboarding")

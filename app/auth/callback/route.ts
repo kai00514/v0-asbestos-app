@@ -70,10 +70,22 @@ export async function GET(request: NextRequest) {
     } else {
       console.log("[v0] Email confirmed for user:", user.id)
     }
+
+    const { data: settingsData } = await supabaseAdmin
+      .from("user_settings")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    console.log("[v0] Settings data:", settingsData)
+
+    if (settingsData?.onboarding_completed) {
+      return NextResponse.redirect(`${origin}/dashboard`)
+    } else {
+      return NextResponse.redirect(`${origin}/onboarding`)
+    }
   } else {
     console.error("[v0] No user found after authentication")
+    return NextResponse.redirect(`${origin}/login?error=no_user`)
   }
-
-  // ダッシュボードへリダイレクト
-  return NextResponse.redirect(`${origin}/dashboard`)
 }
