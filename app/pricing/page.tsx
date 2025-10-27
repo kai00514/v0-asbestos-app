@@ -15,7 +15,7 @@ export default async function PricingPage() {
   // }
 
   return (
-    <div className="min-h-screen bg-gray-200 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">
       <WaveHeader title="料金プラン" showLogo={false} />
 
       <main className="container mx-auto px-4 py-8 max-w-7xl">

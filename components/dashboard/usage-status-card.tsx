@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
 
-export function UsageStatusCard() {
-  const current = 26
-  const limit = 200
-  const percentage = (current / limit) * 100
+interface UsageStatusCardProps {
+  currentUsage: number
+  monthlyLimit: number
+  usagePercentage: number
+}
 
-  const isWarning = percentage >= 80 && percentage < 100
-  const isLimit = percentage >= 100
+export function UsageStatusCard({ currentUsage, monthlyLimit, usagePercentage }: UsageStatusCardProps) {
+  const isWarning = usagePercentage >= 80 && usagePercentage < 100
+  const isLimit = usagePercentage >= 100
 
   return (
     <Card className="bg-white shadow-sm rounded-xl border-0">
@@ -36,16 +38,16 @@ export function UsageStatusCard() {
 
         <div className="space-y-2.5">
           <div className="flex justify-between items-baseline">
-            <span className="text-2xl font-bold text-gray-900">{current}</span>
-            <span className="text-sm text-gray-500">/ {limit}回</span>
+            <span className="text-2xl font-bold text-gray-900">{currentUsage}</span>
+            <span className="text-sm text-gray-500">/ {monthlyLimit}回</span>
           </div>
           <Progress
-            value={percentage}
+            value={usagePercentage}
             className={`h-2.5 ${isLimit ? "[&>div]:bg-red-500" : isWarning ? "[&>div]:bg-yellow-500" : "[&>div]:bg-emerald-500"}`}
           />
           <div className="flex justify-between items-center">
-            <p className="text-xs text-gray-500">スタンダードプラン</p>
-            <span className="text-xs font-medium text-gray-700">{percentage.toFixed(0)}%</span>
+            <p className="text-xs text-gray-500">利用状況</p>
+            <span className="text-xs font-medium text-gray-700">{usagePercentage.toFixed(0)}%</span>
           </div>
         </div>
 

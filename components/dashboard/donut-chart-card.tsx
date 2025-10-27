@@ -3,12 +3,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
 
-const data = [
-  { name: "検出あり", value: 5, color: "#EF4444" },
-  { name: "検出なし", value: 21, color: "#10B981" },
-]
+interface DonutChartCardProps {
+  positiveCount: number
+  negativeCount: number
+}
 
-export function DonutChartCard() {
+export function DonutChartCard({ positiveCount, negativeCount }: DonutChartCardProps) {
+  const data = [
+    { name: "検出あり", value: positiveCount, color: "#EF4444" },
+    { name: "検出なし", value: negativeCount, color: "#10B981" },
+  ]
+
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   return (

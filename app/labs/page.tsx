@@ -19,7 +19,7 @@ export default async function LabsPage({
   // }
 
   return (
-    <div className="min-h-screen bg-gray-200 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
       <WaveHeader title="分析機関一覧" showLogo={false} />
 
       {searchParams.detectionId && (

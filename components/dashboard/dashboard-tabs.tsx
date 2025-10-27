@@ -1,13 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export function DashboardTabs() {
-  const [activeTab, setActiveTab] = useState("month")
+interface DashboardTabsProps {
+  period: "today" | "week" | "month"
+}
+
+export function DashboardTabs({ period }: DashboardTabsProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("period", value)
+    router.push(`/dashboard?${params.toString()}`)
+  }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Tabs value={period} onValueChange={handleTabChange} className="w-full">
       <TabsList className="grid w-full grid-cols-3 h-11 bg-white rounded-xl shadow-sm p-1">
         <TabsTrigger
           value="today"

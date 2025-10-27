@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { getDashboardStats, getTeamMembers } from "@/lib/api/dashboard"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { AccountSelector } from "@/components/dashboard/account-selector"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
@@ -7,7 +8,11 @@ import { UsageStatusCard } from "@/components/dashboard/usage-status-card"
 import { MapCard } from "@/components/dashboard/map-card"
 import { BottomNav } from "@/components/layout/bottom-nav"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { user?: string; period?: "today" | "week" | "month" }
+}) {
   const supabase = await getSupabaseServerClient()
   const {
     data: { user },
@@ -17,17 +22,32 @@ export default async function DashboardPage() {
   //   redirect("/login")
   // }
 
+  const demoUserId = "10000000-0000-0000-0000-000000000001"
+  const demoCompanyId = "00000000-0000-0000-0000-000000000001"
+
+  const selectedUserId = searchParams.user || "all"
+  const period = searchParams.period || "month"
+
+  const [stats, teamMembers] = await Promise.all([
+    getDashboardStats(demoCompanyId, selectedUserId === "all" ? undefined : selectedUserId, period),
+    getTeamMembers(demoCompanyId),
+  ])
+
   return (
     <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
       <DashboardHeader />
 
       <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
-        <AccountSelector />
-        <DashboardTabs />
+        <AccountSelector teamMembers={teamMembers} selectedUserId={selectedUserId} />
+        <DashboardTabs period={period} />
 
         <div className="space-y-4">
-          <DonutChartCard />
-          <UsageStatusCard />
+          <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} />
+          <UsageStatusCard
+            currentUsage={stats.currentUsage}
+            monthlyLimit={stats.monthlyLimit}
+            usagePercentage={stats.usagePercentage}
+          />
           <MapCard />
         </div>
       </main>

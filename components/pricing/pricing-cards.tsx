@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const plans = [
   {
+    id: "basic",
     name: "ベーシック",
     monthlyPrice: 9800,
     yearlyPrice: 98000,
@@ -17,6 +19,7 @@ const plans = [
     features: ["PDF出力", "チーム管理", "メールサポート"],
   },
   {
+    id: "standard",
     name: "スタンダード",
     monthlyPrice: 29800,
     yearlyPrice: 298000,
@@ -27,6 +30,7 @@ const plans = [
     current: true,
   },
   {
+    id: "pro",
     name: "プロ",
     monthlyPrice: 79800,
     yearlyPrice: 798000,
@@ -37,7 +41,12 @@ const plans = [
 ]
 
 export function PricingCards() {
+  const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
+
+  const handleSelectPlan = (planId: string) => {
+    router.push(`/checkout?plan=${planId}&billing=${billingCycle}`)
+  }
 
   return (
     <div className="space-y-8">
@@ -110,6 +119,7 @@ export function PricingCards() {
                   plan.current ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
                 disabled={plan.current}
+                onClick={() => !plan.current && handleSelectPlan(plan.id)}
               >
                 {plan.current ? "現在のプラン" : "このプランを選択"}
               </Button>
