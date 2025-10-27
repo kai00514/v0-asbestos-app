@@ -115,7 +115,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
     throw error
   }
 
-  console.log("[v0] Password changed successfully")
+  console.log("[v0] Password changed successfully, session invalidated by admin API")
 
   return { success: true }
 }

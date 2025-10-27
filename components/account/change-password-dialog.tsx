@@ -46,11 +46,17 @@ export function ChangePasswordDialog() {
       await changePassword(formData.currentPassword, formData.newPassword)
 
       const supabase = getSupabaseBrowserClient()
-      await supabase.auth.signOut()
+      await supabase.auth.signOut().catch(() => {
+        console.log("[v0] Session already invalidated, ignoring signOut error")
+      })
 
       toast.success("パスワードが変更されました。新しいパスワードでログインしてください。")
 
-      router.push("/login")
+      setOpen(false)
+
+      setTimeout(() => {
+        router.push("/login")
+      }, 1000)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "パスワード変更に失敗しました"
       toast.error(errorMessage)
