@@ -21,7 +21,7 @@ export async function requireAuth() {
     .from("users")
     .select("*, companies(*)")
     .eq("id", authUser.id)
-    .single()
+    .maybeSingle()
 
   if (userError || !user) {
     throw new APIError(401, ErrorCodes.UNAUTHORIZED, "ユーザー情報が見つかりません")

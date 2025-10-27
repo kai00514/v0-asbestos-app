@@ -85,7 +85,7 @@ export async function getDashboardStats(
     .from("subscriptions")
     .select("monthly_limit")
     .eq("company_id", companyId)
-    .single()
+    .maybeSingle()
 
   const monthlyLimit = subscription?.monthly_limit || 30
 

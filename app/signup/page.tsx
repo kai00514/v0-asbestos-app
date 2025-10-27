@@ -10,14 +10,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [name, setName] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +36,100 @@ export default function SignupPage() {
       return
     }
 
-    router.push("/onboarding")
+    setIsLoading(true)
+
+    try {
+      const supabase = getSupabaseBrowserClient()
+
+      // Supabase Authでユーザー作成
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            name,
+          },
+        },
+      })
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          setError("このメールアドレスは既に登録されています")
+        } else {
+          setError(authError.message)
+        }
+        setIsLoading(false)
+        return
+      }
+
+      if (!authData.user) {
+        setError("アカウント作成に失敗しました")
+        setIsLoading(false)
+        return
+      }
+
+      // 会社レコード作成
+      const { data: company, error: companyError } = await supabase
+        .from("companies")
+        .insert({
+          name: companyName,
+          owner_id: authData.user.id,
+        })
+        .select()
+        .single()
+
+      if (companyError) {
+        console.error("[v0] Company creation error:", companyError)
+        setError("会社情報の作成に失敗しました")
+        setIsLoading(false)
+        return
+      }
+
+      // ユーザーテーブルに登録（Owner権限）
+      const { error: userError } = await supabase.from("users").insert({
+        id: authData.user.id,
+        email,
+        name,
+        company_id: company.id,
+        role: "owner",
+        is_active: true,
+        onboarding_completed: false,
+      })
+
+      if (userError) {
+        console.error("[v0] User creation error:", userError)
+        setError("ユーザー情報の作成に失敗しました")
+        setIsLoading(false)
+        return
+      }
+
+      // ユーザー設定初期化
+      await supabase.from("user_settings").insert({
+        user_id: authData.user.id,
+        notification_email: true,
+        notification_push: false,
+      })
+
+      // トライアルサブスクリプション作成
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialEndDate.getDate() + 30)
+
+      await supabase.from("subscriptions").insert({
+        company_id: company.id,
+        plan_name: "trial",
+        status: "trialing",
+        monthly_limit: 50,
+        trial_ends_at: trialEndDate.toISOString(),
+      })
+
+      // オンボーディングへリダイレクト
+      router.push("/onboarding")
+    } catch (err) {
+      console.error("[v0] Signup error:", err)
+      setError("アカウント作成中にエラーが発生しました")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -57,12 +153,6 @@ export default function SignupPage() {
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertDescription className="text-amber-800">
-                <strong>デモモード:</strong>{" "}
-                現在、認証機能は無効化されています。任意の値を入力して登録ボタンを押してください。
-              </AlertDescription>
-            </Alert>
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -78,6 +168,20 @@ export default function SignupPage() {
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">お名前</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="山田 太郎"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="h-11"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -90,6 +194,7 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -102,6 +207,7 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -114,12 +220,17 @@ export default function SignupPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
               />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-              アカウント登録
+            <Button
+              type="submit"
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? "登録中..." : "アカウント登録"}
             </Button>
             <div className="text-center text-sm text-gray-600">
               すでにアカウントをお持ちの方は{" "}

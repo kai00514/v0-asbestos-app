@@ -18,7 +18,7 @@ export async function getAccountData(userId: string): Promise<AccountData> {
   const supabase = await getSupabaseServerClient()
 
   // ユーザー情報取得
-  const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
+  const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).maybeSingle()
 
   if (userError || !user) {
     throw new Error("User not found")
@@ -29,7 +29,7 @@ export async function getAccountData(userId: string): Promise<AccountData> {
     .from("companies")
     .select("*")
     .eq("id", user.company_id)
-    .single()
+    .maybeSingle()
 
   if (companyError || !company) {
     throw new Error("Company not found")
@@ -40,10 +40,10 @@ export async function getAccountData(userId: string): Promise<AccountData> {
     .from("subscriptions")
     .select("*")
     .eq("company_id", user.company_id)
-    .single()
+    .maybeSingle()
 
   // ユーザー設定取得
-  const { data: settings } = await supabase.from("user_settings").select("*").eq("user_id", userId).single()
+  const { data: settings } = await supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle()
 
   // チームメンバー取得（オーナーの場合のみ）
   let teamMembers: User[] = []

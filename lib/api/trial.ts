@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 export async function isTrialUser(userId: string): Promise<boolean> {
   const supabase = await getSupabaseServerClient()
 
-  const { data: user } = await supabase.from("users").select("company_id").eq("id", userId).single()
+  const { data: user } = await supabase.from("users").select("company_id").eq("id", userId).maybeSingle()
 
   if (!user) return false
 
@@ -11,7 +11,7 @@ export async function isTrialUser(userId: string): Promise<boolean> {
     .from("subscriptions")
     .select("status, trial_end")
     .eq("company_id", user.company_id)
-    .single()
+    .maybeSingle()
 
   if (!subscription) return false
 
@@ -27,7 +27,7 @@ export async function isTrialUser(userId: string): Promise<boolean> {
 export async function canUseAIDetection(userId: string): Promise<{ allowed: boolean; reason?: string }> {
   const supabase = await getSupabaseServerClient()
 
-  const { data: user } = await supabase.from("users").select("company_id").eq("id", userId).single()
+  const { data: user } = await supabase.from("users").select("company_id").eq("id", userId).maybeSingle()
 
   if (!user) {
     return { allowed: false, reason: "ユーザーが見つかりません" }
@@ -37,7 +37,7 @@ export async function canUseAIDetection(userId: string): Promise<{ allowed: bool
     .from("subscriptions")
     .select("status, monthly_limit, trial_end")
     .eq("company_id", user.company_id)
-    .single()
+    .maybeSingle()
 
   if (!subscription) {
     return { allowed: false, reason: "サブスクリプションが見つかりません" }

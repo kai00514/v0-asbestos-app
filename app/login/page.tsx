@@ -10,15 +10,65 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push("/dashboard")
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const supabase = getSupabaseBrowserClient()
+
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (authError) {
+        setError("メールアドレスまたはパスワードが正しくありません")
+        setIsLoading(false)
+        return
+      }
+
+      if (!data.user) {
+        setError("ログインに失敗しました")
+        setIsLoading(false)
+        return
+      }
+
+      // ユーザー情報を取得してリダイレクト先を決定
+      const { data: userData } = await supabase
+        .from("users")
+        .select("onboarding_completed, is_active")
+        .eq("id", data.user.id)
+        .single()
+
+      if (!userData?.is_active) {
+        setError("アカウントが無効化されています")
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
+      }
+
+      // オンボーディング完了状態に応じてリダイレクト
+      if (userData?.onboarding_completed) {
+        router.push("/dashboard")
+      } else {
+        router.push("/onboarding")
+      }
+    } catch (err) {
+      console.error("[v0] Login error:", err)
+      setError("ログイン中にエラーが発生しました")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -37,17 +87,16 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-emerald-900">アスベスト判定アプリ</CardTitle>
+          <CardTitle className="text-2xl font-bold text-emerald-900">VizyAs</CardTitle>
           <CardDescription className="text-base">アカウントにログインしてください</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertDescription className="text-amber-800">
-                <strong>デモモード:</strong>{" "}
-                現在、認証機能は無効化されています。任意の値を入力してログインボタンを押してください。
-              </AlertDescription>
-            </Alert>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">メールアドレス</Label>
               <Input
@@ -58,6 +107,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -70,6 +120,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="h-11"
+                disabled={isLoading}
               />
             </div>
             <div className="flex justify-end">
@@ -79,8 +130,12 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-              ログイン
+            <Button
+              type="submit"
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? "ログイン中..." : "ログイン"}
             </Button>
             <div className="text-center text-sm text-gray-600">
               アカウントをお持ちでない方は{" "}
