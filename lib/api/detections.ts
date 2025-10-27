@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/types/database.types"
 
 type Detection = Database["public"]["Tables"]["detections"]["Row"]
@@ -20,7 +20,11 @@ export async function getDetections(
     endDate?: string
   },
 ): Promise<DetectionWithImages[]> {
-  const supabase = await getSupabaseServerClient()
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
 
   let query = supabase
     .from("detections")
@@ -62,8 +66,8 @@ export async function getDetections(
   const { data, error } = await query
 
   if (error) {
-    console.error("[v0] Error fetching detections:", error)
-    throw error
+    console.error("[v0] Error fetching detections:", error.message)
+    return []
   }
 
   return (data as DetectionWithImages[]) || []

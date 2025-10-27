@@ -20,8 +20,13 @@ export function ReferralProgram() {
     setLoading(true)
     try {
       const url = await generateReferralUrl()
-      setReferralUrl(url)
+      if (url) {
+        setReferralUrl(url)
+      } else {
+        toast.error("紹介URLの生成に失敗しました")
+      }
     } catch (error) {
+      console.error("[v0] Error loading referral URL:", error)
       toast.error("紹介URLの取得に失敗しました")
     } finally {
       setLoading(false)
@@ -63,7 +68,7 @@ export function ReferralProgram() {
         <div className="space-y-2">
           <label className="text-sm font-medium">あなたの紹介URL</label>
           <div className="flex gap-2">
-            <Input value={referralUrl} readOnly className="flex-1" disabled={loading} />
+            <Input value={referralUrl || "読み込み中..."} readOnly className="flex-1" disabled={loading} />
             <Button onClick={copyToClipboard} disabled={loading || !referralUrl} variant="outline">
               <Copy className="w-4 h-4" />
             </Button>

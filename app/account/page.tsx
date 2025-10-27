@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { getAccountData } from "@/lib/api/account"
+import { redirect } from "next/navigation"
 import { AccountInfo } from "@/components/account/account-info"
 import { PlanBilling } from "@/components/account/plan-billing"
 import { NotificationSettings } from "@/components/account/notification-settings"
@@ -16,13 +17,11 @@ export default async function AccountPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // if (!user) {
-  //   redirect("/login")
-  // }
+  if (!user) {
+    redirect("/login")
+  }
 
-  const demoUserId = "10000000-0000-0000-0000-000000000001"
-
-  const accountData = await getAccountData(demoUserId)
+  const accountData = await getAccountData(user.id)
 
   return (
     <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">

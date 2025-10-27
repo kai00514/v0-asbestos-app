@@ -32,6 +32,12 @@ export function ChangePasswordDialog() {
       return
     }
 
+    // 新しいパスワードのチェックを追加
+    if (formData.currentPassword === formData.newPassword) {
+      toast.error("新しいパスワードは現在のパスワードと異なるものを入力してください")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -40,7 +46,8 @@ export function ChangePasswordDialog() {
       setOpen(false)
       setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
     } catch (error) {
-      toast.error("パスワード変更に失敗しました")
+      const errorMessage = error instanceof Error ? error.message : "パスワード変更に失敗しました"
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

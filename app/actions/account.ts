@@ -1,7 +1,13 @@
 "use server"
 
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
+
+const getAdminClient = () => {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  })
+}
 
 export async function updateAccountInfo(data: {
   userId: string
@@ -9,15 +15,15 @@ export async function updateAccountInfo(data: {
   userName: string
   companyName: string
 }) {
-  const supabase = await getSupabaseServerClient()
+  const supabaseAdmin = getAdminClient()
 
   // ユーザー名更新
-  const { error: userError } = await supabase.from("users").update({ name: data.userName }).eq("id", data.userId)
+  const { error: userError } = await supabaseAdmin.from("users").update({ name: data.userName }).eq("id", data.userId)
 
   if (userError) throw userError
 
   // 会社名更新
-  const { error: companyError } = await supabase
+  const { error: companyError } = await supabaseAdmin
     .from("companies")
     .update({ name: data.companyName })
     .eq("id", data.companyId)
@@ -28,9 +34,15 @@ export async function updateAccountInfo(data: {
 }
 
 export async function changeEmail(newEmail: string) {
-  const supabase = await getSupabaseServerClient()
+  const supabaseAdmin = getAdminClient()
 
-  const { error } = await supabase.auth.updateUser({
+  const {
+    data: { user },
+  } = await supabaseAdmin.auth.admin.getUserById((await supabaseAdmin.auth.getUser()).data.user?.id || "")
+
+  if (!user) throw new Error("User not found")
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
     email: newEmail,
   })
 
@@ -38,41 +50,50 @@ export async function changeEmail(newEmail: string) {
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
-  const supabase = await getSupabaseServerClient()
+  const supabaseAdmin = getAdminClient()
+
+  if (currentPassword === newPassword) {
+    throw new Error("新しいパスワードは現在のパスワードと異なるものを入力してください")
+  }
 
   // 現在のパスワードで再認証
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabaseAdmin.auth.getUser()
 
   if (!user?.email) throw new Error("User not found")
 
-  const { error: signInError } = await supabase.auth.signInWithPassword({
+  const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,
   })
 
-  if (signInError) throw new Error("Current password is incorrect")
+  if (signInError) throw new Error("現在のパスワードが正しくありません")
 
   // パスワード更新
-  const { error } = await supabase.auth.updateUser({
+  const { error } = await supabaseAdmin.auth.updateUser({
     password: newPassword,
   })
 
-  if (error) throw error
+  if (error) {
+    if (error.message.includes("same_password")) {
+      throw new Error("新しいパスワードは現在のパスワードと異なるものを入力してください")
+    }
+    throw error
+  }
 }
 
 export async function inviteMember(data: { email: string; name: string; role: "owner" | "member" }) {
-  const supabase = await getSupabaseServerClient()
+  const supabaseAdmin = getAdminClient()
 
   // 現在のユーザーの会社IDを取得
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabaseAdmin.auth.getUser()
 
   if (!user) throw new Error("Not authenticated")
 
-  const { data: currentUser } = await supabase.from("users").select("company_id, role").eq("id", user.id).single()
+  const { data: currentUser } = await supabaseAdmin.from("users").select("company_id, role").eq("id", user.id).single()
 
   if (!currentUser || currentUser.role !== "owner") {
     throw new Error("Only owners can invite members")
@@ -83,7 +104,7 @@ export async function inviteMember(data: { email: string; name: string; role: "o
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7) // 7日間有効
 
-  const { error } = await supabase.from("invite_tokens").insert({
+  const { error } = await supabaseAdmin.from("invite_tokens").insert({
     company_id: currentUser.company_id,
     email: data.email,
     role: data.role,

@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { getDetections } from "@/lib/api/detections"
 import { DetectionList } from "@/components/detections/detection-list"
 import { DetectionFilters } from "@/components/detections/detection-filters"
@@ -16,24 +16,35 @@ export default async function DetectionsPage({
     endDate?: string
   }
 }) {
-  const supabase = await getSupabaseServerClient()
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  })
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // if (!user) {
-  //   redirect("/login")
-  // }
+  let detections: Awaited<ReturnType<typeof getDetections>> = []
 
-  const demoCompanyId = "00000000-0000-0000-0000-000000000001"
+  if (user) {
+    const { data: userData } = await supabase.from("users").select("company_id").eq("id", user.id).maybeSingle()
 
-  const detections = await getDetections(demoCompanyId, {
-    search: searchParams.search,
-    result: searchParams.result === "true" ? true : searchParams.result === "false" ? false : undefined,
-    siteTagId: searchParams.siteTagId,
-    startDate: searchParams.startDate,
-    endDate: searchParams.endDate,
-  })
+    if (userData?.company_id) {
+      try {
+        console.log("[v0] Fetching detections for company:", userData.company_id)
+        detections = await getDetections(userData.company_id, {
+          search: searchParams.search,
+          result: searchParams.result === "true" ? true : searchParams.result === "false" ? false : undefined,
+          siteTagId: searchParams.siteTagId,
+          startDate: searchParams.startDate,
+          endDate: searchParams.endDate,
+        })
+        console.log("[v0] Detections fetched:", detections.length)
+      } catch (error) {
+        console.error("[v0] Failed to fetch detections:", error)
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">
