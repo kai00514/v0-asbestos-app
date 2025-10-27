@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       .from("companies")
       .insert({
         name: validatedData.companyName,
-        owner_id: authData.user.id,
       })
       .select()
       .single()
