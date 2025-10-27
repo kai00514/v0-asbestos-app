@@ -44,29 +44,35 @@ export default function LoginPage() {
         return
       }
 
-      const { data: userData } = await supabase
-        .from("users")
-        .select("is_active, email_confirmed")
-        .eq("id", data.user.id)
-        .maybeSingle()
+      console.log("[v0] Login successful, user ID:", data.user.id)
 
-      const { data: settingsData } = await supabase
-        .from("user_settings")
-        .select("onboarding_completed")
-        .eq("user_id", data.user.id)
-        .maybeSingle()
+      const response = await fetch("/api/auth/me", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+      })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || "ユーザー情報の取得に失敗しました")
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
+      }
+
+      const userData = await response.json()
       console.log("[v0] User data:", userData)
-      console.log("[v0] Settings data:", settingsData)
 
-      if (!userData?.email_confirmed) {
+      if (!userData.email_confirmed) {
         setError("メールアドレスの確認が完了していません。受信トレイを確認してください。")
         await supabase.auth.signOut()
         setIsLoading(false)
         return
       }
 
-      if (!userData?.is_active) {
+      if (!userData.is_active) {
         setError("アカウントが無効化されています")
         await supabase.auth.signOut()
         setIsLoading(false)
@@ -74,7 +80,7 @@ export default function LoginPage() {
       }
 
       // オンボーディング完了状態に応じてリダイレクト
-      if (settingsData?.onboarding_completed) {
+      if (userData.onboarding_completed) {
         router.push("/dashboard")
       } else {
         router.push("/onboarding")

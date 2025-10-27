@@ -82,12 +82,7 @@ export default function SignupPage() {
         return
       }
 
-      // 登録成功後、オンボーディングまたはダッシュボードへリダイレクト
-      if (data.redirectTo) {
-        router.push(data.redirectTo)
-      } else {
-        router.push("/onboarding")
-      }
+      router.push(`/signup-success?email=${encodeURIComponent(email)}`)
     } catch (err) {
       console.error("[v0] Signup error:", err)
       setError("アカウント作成中にエラーが発生しました")

@@ -148,9 +148,10 @@ export async function POST(request: NextRequest) {
       {
         user,
         company,
-        redirectTo: "/onboarding",
+        message:
+          "アカウントが作成されました。確認メールを送信しましたので、メール内のリンクをクリックして登録を完了してください。",
       },
-      "アカウントが作成されました。メールを確認してください。",
+      "アカウントが作成されました",
     )
   } catch (error) {
     if (authUserId || companyId) {
