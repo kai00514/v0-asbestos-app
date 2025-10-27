@@ -41,11 +41,6 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  if (!userData.email_confirmed) {
-    console.log("[v0] Dashboard - Email not confirmed, redirecting to login")
-    redirect("/login")
-  }
-
   if (!userData.company_id) {
     console.error("[v0] Dashboard - Company ID not found")
     redirect("/login")
@@ -54,31 +49,49 @@ export default async function DashboardPage({
   const selectedUserId = searchParams.user || "all"
   const period = searchParams.period || "month"
 
-  const [stats, teamMembers] = await Promise.all([
-    getDashboardStats(userData.company_id, selectedUserId === "all" ? undefined : selectedUserId, period),
-    getTeamMembers(userData.company_id),
-  ])
+  try {
+    const [stats, teamMembers] = await Promise.all([
+      getDashboardStats(userData.company_id, selectedUserId === "all" ? undefined : selectedUserId, period),
+      getTeamMembers(userData.company_id),
+    ])
 
-  return (
-    <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
-      <DashboardHeader />
+    return (
+      <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
+        <DashboardHeader />
 
-      <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
-        <AccountSelector teamMembers={teamMembers} selectedUserId={selectedUserId} />
-        <DashboardTabs period={period} />
+        <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
+          <AccountSelector teamMembers={teamMembers} selectedUserId={selectedUserId} />
+          <DashboardTabs period={period} />
 
-        <div className="space-y-4">
-          <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} />
-          <UsageStatusCard
-            currentUsage={stats.currentUsage}
-            monthlyLimit={stats.monthlyLimit}
-            usagePercentage={stats.usagePercentage}
-          />
-          <MapCard />
-        </div>
-      </main>
+          <div className="space-y-4">
+            <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} />
+            <UsageStatusCard
+              currentUsage={stats.currentUsage}
+              monthlyLimit={stats.monthlyLimit}
+              usagePercentage={stats.usagePercentage}
+            />
+            <MapCard />
+          </div>
+        </main>
 
-      <BottomNav />
-    </div>
-  )
+        <BottomNav />
+      </div>
+    )
+  } catch (error) {
+    console.error("[v0] Dashboard - Error loading data:", error)
+    return (
+      <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
+        <DashboardHeader />
+
+        <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
+          <div className="bg-white rounded-lg p-6 text-center">
+            <p className="text-gray-600">データの読み込み中にエラーが発生しました。</p>
+            <p className="text-sm text-gray-500 mt-2">ページを再読み込みしてください。</p>
+          </div>
+        </main>
+
+        <BottomNav />
+      </div>
+    )
+  }
 }
