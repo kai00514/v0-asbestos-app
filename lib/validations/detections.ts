@@ -19,7 +19,7 @@ export const createDetectionSchema = z.object({
       }),
     )
     .min(1, "少なくとも1枚の画像が必要です")
-    .max(10, "画像は最大10枚までです"),
+    .max(6, "画像は最大6枚までです"),
 })
 
 export const updateDetectionSchema = z.object({

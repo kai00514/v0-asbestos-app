@@ -32,11 +32,11 @@ export function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
       return true
     })
 
-    const newImages = [...images, ...validFiles].slice(0, 10)
+    const newImages = [...images, ...validFiles].slice(0, 6)
     onImagesChange(newImages)
 
-    if (newImages.length >= 10) {
-      toast.warning("画像は最大10枚までです")
+    if (newImages.length >= 6) {
+      toast.warning("画像は最大6枚までです")
     }
   }
 
@@ -49,7 +49,7 @@ export function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>写真を選択</span>
-          <span className="text-sm font-normal text-gray-600">{images.length}/10</span>
+          <span className="text-sm font-normal text-gray-600">{images.length}/6</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -72,7 +72,7 @@ export function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
           <div className="flex flex-col items-center gap-2">
             <Upload className="w-8 h-8 text-gray-400" />
             <span className="text-sm font-medium">写真を選択</span>
-            <span className="text-xs text-gray-500">最大10枚、各10MB以下</span>
+            <span className="text-xs text-gray-500">最大6枚、各10MB以下</span>
           </div>
         </Button>
 

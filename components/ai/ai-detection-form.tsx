@@ -22,13 +22,13 @@ export function AIDetectionForm() {
   const [siteName, setSiteName] = useState("")
   const [location, setLocation] = useState("")
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState({ current: 0, total: 0, stage: "" })
 
   const getCurrentLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // 逆ジオコーディングで住所を取得（実装例）
-          setLocation(`東京都渋谷区渋谷1-1-1`)
+          setLocation(`${position.coords.latitude}, ${position.coords.longitude}`)
           toast.success("現在地を取得しました")
         },
         (error) => {
@@ -47,17 +47,57 @@ export function AIDetectionForm() {
     }
 
     setLoading(true)
+    setProgress({ current: 0, total: images.length, stage: "画像を変換中" })
 
     try {
-      // AI判定APIを呼び出す（実装例）
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      const imagePromises = images.map((file) => {
+        return new Promise<{ data: string; filename: string }>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve({ data: reader.result as string, filename: file.name })
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+      })
 
-      // 成功したら完了画面へ
-      router.push("/ai/complete?id=0004")
+      const base64Images = await Promise.all(imagePromises)
+      console.log("[v0] Converted", base64Images.length, "images to base64")
+
+      setProgress({ current: 0, total: images.length, stage: "AI解析中" })
+
+      const response = await fetch("/api/detections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sample_name: sampleName,
+          site_name: siteName,
+          address: location || undefined,
+          location: location
+            ? {
+                latitude: Number.parseFloat(location.split(",")[0]),
+                longitude: Number.parseFloat(location.split(",")[1]),
+              }
+            : undefined,
+          images: base64Images,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "AI判定に失敗しました")
+      }
+
+      const result = await response.json()
+      console.log("[v0] AI detection completed:", result.data.id)
+
+      toast.success("AI判定が完了しました")
+
+      router.push(`/ai/complete?id=${result.data.id}`)
     } catch (error) {
-      toast.error("AI判定に失敗しました")
+      console.error("[v0] AI detection error:", error)
+      toast.error(error instanceof Error ? error.message : "AI判定に失敗しました")
     } finally {
       setLoading(false)
+      setProgress({ current: 0, total: 0, stage: "" })
     }
   }
 
@@ -128,7 +168,7 @@ export function AIDetectionForm() {
           <AlertDescription className="text-blue-800">
             <div className="space-y-1">
               <p className="font-medium">AI解析中...</p>
-              <p className="text-sm">画像をアップロード中 (1/3)</p>
+              <p className="text-sm">{progress.stage}</p>
             </div>
           </AlertDescription>
         </Alert>

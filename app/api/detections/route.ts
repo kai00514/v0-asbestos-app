@@ -5,6 +5,8 @@ import { APIError, ErrorCodes, handleAPIError } from "@/lib/api/errors"
 import { successResponse, paginatedResponse } from "@/lib/api/response"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { detectAsbestos } from "@/lib/ai/client"
+import { createClient } from "@supabase/supabase-js"
+import sharp from "sharp"
 
 // GET /api/detections - 判定一覧取得
 export async function GET(request: NextRequest) {
@@ -84,10 +86,19 @@ export async function POST(request: NextRequest) {
     const { user } = await requireAuth()
     const body = await request.json()
 
+    console.log("[v0] Starting AI detection for user:", user.id, "company:", user.company_id)
+
     // バリデーション
     const validatedData = createDetectionSchema.parse(body)
+    console.log("[v0] Validated data, image count:", validatedData.images.length)
 
     const supabase = await getSupabaseServerClient()
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: {
+        persistSession: false,
+      },
+    })
 
     // 月次上限チェック
     const { data: usage } = await supabase.rpc("get_current_usage", {
@@ -113,12 +124,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // AI推論実行（各画像）
-    const aiResults = await Promise.all(validatedData.images.map((img) => detectAsbestos(img.data)))
+    console.log("[v0] Starting AI inference for", validatedData.images.length, "images")
+
+    const CONCURRENT_LIMIT = 3
+    const aiResults = []
+
+    for (let i = 0; i < validatedData.images.length; i += CONCURRENT_LIMIT) {
+      const batch = validatedData.images.slice(i, i + CONCURRENT_LIMIT)
+      console.log(`[v0] Processing batch ${Math.floor(i / CONCURRENT_LIMIT) + 1}`)
+
+      const batchResults = await Promise.all(
+        batch.map(async (img, batchIndex) => {
+          const actualIndex = i + batchIndex
+          console.log(`[v0] Processing image ${actualIndex + 1}/${validatedData.images.length}`)
+          const result = await detectAsbestos(img.data)
+          console.log(`[v0] Image ${actualIndex + 1} result:`, result.has_asbestos, "confidence:", result.confidence)
+          return result
+        }),
+      )
+
+      aiResults.push(...batchResults)
+    }
 
     // 判定結果集約
     const hasAsbestos = aiResults.some((r) => r.has_asbestos)
     const avgConfidence = aiResults.reduce((sum, r) => sum + r.confidence, 0) / aiResults.length
+
+    console.log("[v0] Overall result:", hasAsbestos, "avg confidence:", avgConfidence)
 
     // detection_number自動採番
     const { data: lastDetection } = await supabase
@@ -148,7 +180,7 @@ export async function POST(request: NextRequest) {
         result: hasAsbestos,
         confidence: avgConfidence,
         detection_date: new Date().toISOString(),
-        model_version: aiResults[0].model_version,
+        model_version: aiResults[0].model_version || "unknown",
       })
       .select()
       .single()
@@ -158,49 +190,161 @@ export async function POST(request: NextRequest) {
       throw new APIError(500, ErrorCodes.DATABASE_ERROR, "判定結果の保存に失敗しました")
     }
 
-    // 画像とバウンディングボックスを保存
+    console.log("[v0] Detection created:", detection.id)
+
     for (let i = 0; i < validatedData.images.length; i++) {
       const image = validatedData.images[i]
       const aiResult = aiResults[i]
 
-      // TODO: Supabase Storageにアップロード
-      // 現在はモックURLを使用
-      const originalUrl = `/placeholder.svg?height=800&width=600&query=asbestos-sample-${i}`
-      const bbUrl = `/placeholder.svg?height=800&width=600&query=asbestos-bb-${i}`
-      const thumbnailUrl = `/placeholder.svg?height=300&width=300&query=asbestos-thumb-${i}`
+      try {
+        console.log(`[v0] Uploading image ${i + 1}/${validatedData.images.length}`)
 
-      // detection_imagesテーブルに保存
-      const { data: detectionImage, error: imageError } = await supabase
-        .from("detection_images")
-        .insert({
-          detection_id: detection.id,
-          original_url: originalUrl,
-          bb_url: bbUrl,
-          thumbnail_url: thumbnailUrl,
-          filename: image.filename,
-          order_index: i,
+        // Base64 → Buffer変換
+        const base64Data = image.data.split(",")[1] || image.data
+        const buffer = Buffer.from(base64Data, "base64")
+
+        // ファイル名生成
+        const timestamp = Date.now()
+        const ext = image.filename.split(".").pop() || "jpg"
+        const originalFileName = `original_${i.toString().padStart(3, "0")}_${timestamp}.${ext}`
+        const originalFilePath = `${user.company_id}/${detection.id}/${originalFileName}`
+
+        // オリジナル画像をStorageにアップロード
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from("detection-images")
+          .upload(originalFilePath, buffer, {
+            contentType: `image/${ext === "jpg" ? "jpeg" : ext}`,
+            upsert: false,
+          })
+
+        if (uploadError) {
+          console.error(`[v0] Failed to upload image ${i}:`, uploadError)
+          throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`)
+        }
+
+        // 公開URLを取得
+        const { data: originalUrlData } = supabaseAdmin.storage.from("detection-images").getPublicUrl(originalFilePath)
+        const originalUrl = originalUrlData.publicUrl
+
+        console.log(`[v0] Image ${i + 1} uploaded:`, originalUrl)
+
+        // バウンディングボックスつき画像を生成
+        let bbUrl = originalUrl
+        if (aiResult.bounding_boxes.length > 0) {
+          try {
+            const imageSharp = sharp(buffer)
+            const metadata = await imageSharp.metadata()
+
+            // SVGでバウンディングボックスを描画
+            const svgOverlay = `
+              <svg width="${metadata.width}" height="${metadata.height}">
+                ${aiResult.bounding_boxes
+                  .map(
+                    (bb) => `
+                  <rect 
+                    x="${bb.x - bb.width / 2}" 
+                    y="${bb.y - bb.height / 2}" 
+                    width="${bb.width}" 
+                    height="${bb.height}" 
+                    fill="none" 
+                    stroke="red" 
+                    stroke-width="4"
+                  />
+                  <text 
+                    x="${bb.x - bb.width / 2 + 5}" 
+                    y="${bb.y - bb.height / 2 - 10}" 
+                    fill="red" 
+                    font-size="20" 
+                    font-weight="bold"
+                    style="text-shadow: 1px 1px 2px black"
+                  >
+                    ${(bb.confidence * 100).toFixed(1)}%
+                  </text>
+                `,
+                  )
+                  .join("")}
+              </svg>
+            `
+
+            // 画像にオーバーレイを合成
+            const bbImageBuffer = await imageSharp
+              .composite([{ input: Buffer.from(svgOverlay), top: 0, left: 0 }])
+              .jpeg()
+              .toBuffer()
+
+            // BBつき画像をStorageにアップロード
+            const bbFileName = `bb_${i.toString().padStart(3, "0")}_${timestamp}.jpg`
+            const bbFilePath = `${user.company_id}/${detection.id}/${bbFileName}`
+
+            await supabaseAdmin.storage.from("detection-images").upload(bbFilePath, bbImageBuffer, {
+              contentType: "image/jpeg",
+              upsert: false,
+            })
+
+            const { data: bbUrlData } = supabaseAdmin.storage.from("detection-images").getPublicUrl(bbFilePath)
+            bbUrl = bbUrlData.publicUrl
+
+            console.log(`[v0] BB image ${i + 1} created:`, bbUrl)
+          } catch (bbError) {
+            console.error(`[v0] Failed to create BB image ${i}:`, bbError)
+            // BB画像生成失敗時はオリジナル画像を使用
+          }
+        }
+
+        // サムネイル生成
+        const thumbnailBuffer = await sharp(buffer).resize(300, 300, { fit: "cover" }).jpeg().toBuffer()
+
+        const thumbFileName = `thumb_${i.toString().padStart(3, "0")}_${timestamp}.jpg`
+        const thumbFilePath = `${user.company_id}/${detection.id}/${thumbFileName}`
+
+        await supabaseAdmin.storage.from("detection-images").upload(thumbFilePath, thumbnailBuffer, {
+          contentType: "image/jpeg",
+          upsert: false,
         })
-        .select()
-        .single()
 
-      if (imageError) {
-        console.error("[v0] Detection image creation error:", imageError)
-        continue
-      }
+        const { data: thumbUrlData } = supabaseAdmin.storage.from("detection-images").getPublicUrl(thumbFilePath)
+        const thumbnailUrl = thumbUrlData.publicUrl
 
-      // bounding_boxesテーブルに保存
-      if (aiResult.bounding_boxes.length > 0) {
-        const boundingBoxes = aiResult.bounding_boxes.map((bb) => ({
-          detection_image_id: detectionImage.id,
-          x: bb.x,
-          y: bb.y,
-          width: bb.width,
-          height: bb.height,
-          confidence: bb.confidence,
-          class_name: bb.class,
-        }))
+        // detection_imagesテーブルに保存
+        const { data: detectionImage, error: imageError } = await supabase
+          .from("detection_images")
+          .insert({
+            detection_id: detection.id,
+            original_url: originalUrl,
+            bb_url: bbUrl,
+            thumbnail_url: thumbnailUrl,
+            filename: image.filename,
+            order_index: i,
+          })
+          .select()
+          .single()
 
-        await supabase.from("bounding_boxes").insert(boundingBoxes)
+        if (imageError) {
+          console.error("[v0] Detection image creation error:", imageError)
+          continue
+        }
+
+        // bounding_boxesテーブルに保存
+        if (aiResult.bounding_boxes.length > 0) {
+          const boundingBoxes = aiResult.bounding_boxes.map((bb) => ({
+            detection_image_id: detectionImage.id,
+            x: bb.x,
+            y: bb.y,
+            width: bb.width,
+            height: bb.height,
+            confidence: bb.confidence,
+            class_name: bb.class,
+          }))
+
+          const { error: bbError } = await supabase.from("bounding_boxes").insert(boundingBoxes)
+
+          if (bbError) {
+            console.error("[v0] Bounding boxes creation error:", bbError)
+          }
+        }
+      } catch (imageError) {
+        console.error(`[v0] Error processing image ${i}:`, imageError)
+        // 個別の画像エラーは続行
       }
     }
 
@@ -211,8 +355,11 @@ export async function POST(request: NextRequest) {
       .eq("id", detection.id)
       .single()
 
+    console.log("[v0] AI detection completed successfully")
+
     return successResponse(fullDetection, "AI判定が完了しました")
   } catch (error) {
+    console.error("[v0] AI detection error:", error)
     if (error instanceof Error && error.name === "ZodError") {
       return handleAPIError(new APIError(400, ErrorCodes.VALIDATION_ERROR, "入力値が不正です", (error as any).errors))
     }
