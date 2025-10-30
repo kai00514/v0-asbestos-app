@@ -107,7 +107,7 @@ Could not find the 'model_version' column of 'detections' in the schema cache
   - 現在の使用回数を取得
   - 上限と比較
   ↓
-[6. detection_number自動採番] ← ❌ RLSポリシーエラー
+[6. detection_number自動採番] ← ❌ RLSポリシーによるアクセス拒否
   - 最新のdetection_numberを取得
   - +1して次の番号を生成
   ↓
@@ -131,7 +131,24 @@ Could not find the 'model_version' column of 'detections' in the schema cache
 
 ## 問題点の詳細
 
-### 問題1: RLSポリシーの無限再帰
+### 問題1: RLSポリシーによるアクセス拒否
+
+**場所**: `app/api/detections/route.ts` 全体
+
+**問題**:
+- サービスロールクライアント（`supabaseAdmin`）を作成しているが、実際のDB操作には通常の`supabase`クライアントを使用している
+- 通常クライアントではRLSポリシーが適用され、`users`テーブルへのアクセスが拒否される
+
+**影響**:
+- detection_number自動採番時に`permission denied for table users`エラーが発生
+- detectionsテーブルへのINSERTが失敗
+- 画像アップロード処理に到達しない
+
+**解決策**:
+- すべてのデータベース操作で`supabase`を`supabaseAdmin`に変更
+- サービスロールキーを使用することでRLSをバイパス
+
+### 問題2: RLSポリシーの無限再帰
 
 **場所**: `db_spec_new.md` L409-411
 
@@ -153,7 +170,7 @@ CREATE POLICY "users_view_team_members" ON users FOR SELECT TO authenticated
 - `auth.users`テーブルから直接`company_id`を取得
 - または、サブクエリを使用しない方法に変更
 
-### 問題2: カラム名の不一致
+### 問題3: カラム名の不一致
 
 **場所**: `app/api/detections/route.ts` L157
 
@@ -177,7 +194,7 @@ ai_model_version VARCHAR(50),  -- ← 正しいカラム名
 **解決策**:
 - コードを`ai_model_version`に修正
 
-### 問題3: get_current_usage関数が存在しない
+### 問題4: get_current_usage関数が存在しない
 
 **場所**: `app/api/detections/route.ts` L106-108
 
@@ -253,18 +270,19 @@ const { data: usage } = await supabase.rpc("get_current_usage", {
 
 ## 修正が必要な項目
 
-### 優先度: 高
+### 優先度: 高（完了）
 
-1. **RLSポリシーの修正**
-   - `scripts/fix-users-rls-policy.sql`を実行
-   - usersテーブルのRLSポリシーを修正
+1. **✅ すべてのDB操作をsupabaseAdminに変更**
+   - `app/api/detections/route.ts`
+   - L152: detection_number取得
+   - L157: detectionsテーブルinsert
+   - L186: detection_imagesテーブルinsert
+   - L203: bounding_boxesテーブルinsert
+   - L215: 判定結果の再取得
 
-2. **カラム名の修正**
+2. **✅ カラム名の修正**
    - `app/api/detections/route.ts` L157
-   - `model_version` → `ai_model_version`
-
-3. **get_current_usage関数の作成**
-   - `scripts/create-usage-function.sql`を実行
+   - `model_version` → `ai_model_version`（既に修正済み）
 
 ### 優先度: 中
 
@@ -326,6 +344,3 @@ NEXT_PUBLIC_SUPABASE_URL=https://erppwxvwrkljhkymdvvv.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ROBOFLOW_API_KEY=wqIalPUEPICBR6TjbU35
 ROBOFLOW_WORKFLOW_URL=https://serverless.roboflow.com/asbestos-aokhx/workflows/detect-count-and-visualize
-
-
-###

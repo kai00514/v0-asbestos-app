@@ -6,6 +6,7 @@ import { successResponse, paginatedResponse } from "@/lib/api/response"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { detectAsbestos } from "@/lib/ai/client"
 import { createClient } from "@supabase/supabase-js"
+import { uploadImageToStorage } from "@/lib/storage/upload"
 
 // GET /api/detections - 判定一覧取得
 export async function GET(request: NextRequest) {
@@ -104,7 +105,14 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Creating Supabase admin client...")
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: {
+        autoRefreshToken: false,
         persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        headers: {
+          "x-client-info": "supabase-js-node",
+        },
       },
     })
     console.log("[v0] Supabase admin client created successfully")
@@ -128,7 +136,7 @@ export async function POST(request: NextRequest) {
     const imageUrls: string[] = []
 
     // detection_number自動採番（画像アップロード前に実行）
-    const { data: lastDetection } = await supabase
+    const { data: lastDetection } = await supabaseAdmin
       .from("detections")
       .select("detection_number")
       .eq("company_id", user.company_id)
@@ -139,7 +147,7 @@ export async function POST(request: NextRequest) {
     const nextNumber = lastDetection ? lastDetection.detection_number + 1 : 1
 
     // detectionsテーブルに保存（画像処理前に作成）
-    const { data: detection, error: detectionError } = await supabase
+    const { data: detection, error: detectionError } = await supabaseAdmin
       .from("detections")
       .insert({
         company_id: user.company_id,
@@ -196,30 +204,13 @@ export async function POST(request: NextRequest) {
         const contentType = `image/${ext === "jpg" ? "jpeg" : ext}`
         console.log(`[v0] Content-Type: ${contentType}`)
 
-        console.log(`[v0] Attempting upload to bucket: detection-images`)
-
-        const uploadResult = await supabaseAdmin.storage.from("detection-images").upload(filePath, buffer, {
-          contentType,
-          upsert: false,
-        })
-
-        console.log(`[v0] Upload result received`)
-        console.log(`[v0]   - Has error:`, !!uploadResult.error)
-        console.log(`[v0]   - Has data:`, !!uploadResult.data)
-
-        if (uploadResult.error) {
-          console.error(`[v0] ========== UPLOAD ERROR ==========`)
-          console.error(`[v0] Error name:`, uploadResult.error.name || "Unknown")
-          throw new Error(`画像のアップロードに失敗しました: ${uploadResult.error.name || "Unknown error"}`)
-        }
+        console.log(`[v0] Calling uploadImageToStorage...`)
+        const publicUrl = await uploadImageToStorage(buffer, filePath, contentType)
 
         console.log(`[v0] Upload successful!`)
+        console.log(`[v0] Public URL:`, publicUrl)
 
-        console.log(`[v0] Getting public URL...`)
-        const { data: urlData } = supabaseAdmin.storage.from("detection-images").getPublicUrl(filePath)
-        console.log(`[v0] Public URL obtained:`, urlData.publicUrl)
-
-        imageUrls.push(urlData.publicUrl)
+        imageUrls.push(publicUrl)
         console.log(`[v0] ========== Image ${i + 1} upload completed successfully ==========`)
       } catch (uploadError) {
         console.error(`[v0] ========== EXCEPTION during image upload ==========`)
@@ -258,7 +249,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Overall result:", hasAsbestos, "avg confidence:", avgConfidence)
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("detections")
       .update({
         result: hasAsbestos,
@@ -280,7 +271,7 @@ export async function POST(request: NextRequest) {
         console.log(`[v0] Saving detection image ${i + 1}/${imageUrls.length}`)
 
         // detection_imagesテーブルに保存（BB画像とサムネイルはnull）
-        const { data: detectionImage, error: imageError } = await supabase
+        const { data: detectionImage, error: imageError } = await supabaseAdmin
           .from("detection_images")
           .insert({
             detection_id: detection.id,
@@ -310,7 +301,7 @@ export async function POST(request: NextRequest) {
             class_name: bb.class,
           }))
 
-          const { error: bbError } = await supabase.from("bounding_boxes").insert(boundingBoxes)
+          const { error: bbError } = await supabaseAdmin.from("bounding_boxes").insert(boundingBoxes)
 
           if (bbError) {
             console.error("[v0] Bounding boxes creation error:", bbError)
@@ -325,7 +316,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 判定結果を再取得（画像含む）
-    const { data: fullDetection } = await supabase
+    const { data: fullDetection } = await supabaseAdmin
       .from("detections")
       .select("*, detection_images(*, bounding_boxes(*))")
       .eq("id", detection.id)
