@@ -67,7 +67,7 @@ export function PricingCards() {
       {plans.find((p) => p.current) && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
           <p className="text-sm text-blue-800">
-            現在のプラン: <span className="font-medium">スタ��ダード</span> / 次回更新: 2025/11/01
+            現在のプラン: <span className="font-medium">スタンダード</span> / 次回更新: 2025/11/01
           </p>
         </div>
       )}
