@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
             bb_url: null, // No BB image generation
             thumbnail_url: null, // No thumbnail generation
             filename: image.filename,
-            order_index: i,
+            order: i,
           })
           .select()
           .single()

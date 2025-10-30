@@ -56,8 +56,8 @@ export async function detectAsbestos(imageUrl: string): Promise<AIDetectionResul
     const result = await response.json()
     console.log("[v0] Roboflow API response:", JSON.stringify(result, null, 2))
 
-    const detectionCount = result[0]?.count_objects || 0
-    const predictions = result[0]?.predictions?.predictions || []
+    const detectionCount = result.outputs?.[0]?.count_objects || 0
+    const predictions = result.outputs?.[0]?.predictions?.predictions || []
 
     const avgConfidence =
       predictions.length > 0
