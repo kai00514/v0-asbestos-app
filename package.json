@@ -60,7 +60,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
     "server-only": "latest",
-    "sharp": "latest",
+    "sharp": "0.34.4",
     "sonner": "latest",
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",

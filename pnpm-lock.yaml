@@ -162,14 +162,14 @@ importers:
         specifier: latest
         version: 0.0.1
       sharp:
-        specifier: latest
+        specifier: 0.34.4
         version: 0.34.4
       sonner:
         specifier: latest
         version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       stripe:
         specifier: latest
-        version: 19.1.0(@types/node@22.0.0)
+        version: 19.2.0(@types/node@22.0.0)
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.5.5
@@ -2045,8 +2045,8 @@ packages:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
 
-  stripe@19.1.0:
-    resolution: {integrity: sha512-FjgIiE98dMMTNssfdjMvFdD4eZyEzdWAOwPYqzhPRNZeg9ggFWlPXmX1iJKD5pPIwZBaPlC3SayQQkwsPo6/YQ==}
+  stripe@19.2.0:
+    resolution: {integrity: sha512-strzN8luMGMC1LEleGKg7pJGXFx0kSS4y/uSjK8yPQV9SUBMtJVAp/v8XMQLRnMbXaSaWLrIaHcMlKcsizdRDQ==}
     engines: {node: '>=16'}
     peerDependencies:
       '@types/node': '>=16'
@@ -3909,7 +3909,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  stripe@19.1.0(@types/node@22.0.0):
+  stripe@19.2.0(@types/node@22.0.0):
     dependencies:
       qs: 6.14.0
     optionalDependencies:

@@ -14,51 +14,48 @@ export interface AIDetectionResult {
   processing_time_ms?: number
 }
 
-export async function detectAsbestos(imageBase64: string): Promise<AIDetectionResult> {
+export async function detectAsbestos(imageUrl: string): Promise<AIDetectionResult> {
   const apiKey = process.env.ROBOFLOW_API_KEY
+  const workflowUrl = process.env.ROBOFLOW_WORKFLOW_URL
 
-  if (!apiKey) {
-    console.error("[v0] ROBOFLOW_API_KEY is not set, using mock response")
+  console.log("[v0] detectAsbestos called with URL:", imageUrl.slice(0, 100))
+  console.log("[v0] ROBOFLOW_API_KEY exists:", !!apiKey)
+  console.log("[v0] ROBOFLOW_WORKFLOW_URL:", workflowUrl)
+
+  if (!apiKey || !workflowUrl) {
+    console.error("[v0] Roboflow credentials not set, using mock response")
     return getMockResponse()
   }
 
   try {
     console.log("[v0] Calling Roboflow API for asbestos detection")
 
-    // Base64データのみを抽出（data:image/jpeg;base64, を除去）
-    const base64Data = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64
-
-    // Roboflow APIを呼び出し
-    const response = await fetch(
-      "https://serverless.roboflow.com/asbestos-aokhx/workflows/detect-count-and-visualize",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          api_key: apiKey,
-          inputs: {
-            image: {
-              type: "base64",
-              value: base64Data,
-            },
-          },
-        }),
-        signal: AbortSignal.timeout(30000), // 30秒タイムアウト
+    const response = await fetch(workflowUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    )
+      body: JSON.stringify({
+        api_key: apiKey,
+        inputs: {
+          image: {
+            type: "url",
+            value: imageUrl,
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(30000), // 30秒タイムアウト
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error("[v0] Roboflow API error:", response.status, errorText)
-      throw new Error(`Roboflow API error: ${response.status}`)
+      throw new Error(`Roboflow API error: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json()
-    console.log("[v0] Roboflow API response:", JSON.stringify(result).slice(0, 200))
+    console.log("[v0] Roboflow API response:", JSON.stringify(result, null, 2))
 
-    // レスポンスマッピング
     const detectionCount = result[0]?.count_objects || 0
     const predictions = result[0]?.predictions?.predictions || []
 
@@ -85,6 +82,7 @@ export async function detectAsbestos(imageBase64: string): Promise<AIDetectionRe
   } catch (error) {
     console.error("[v0] AI detection error:", error)
     // エラー時はモックレスポンスを返す
+    console.log("[v0] Falling back to mock response")
     return getMockResponse()
   }
 }

@@ -73,20 +73,30 @@ export function AIDetectionForm() {
           address: location || undefined,
           location: location
             ? {
-                latitude: Number.parseFloat(location.split(",")[0]),
-                longitude: Number.parseFloat(location.split(",")[1]),
+                latitude: Number.parseFloat(location.split(",")[0].trim()),
+                longitude: Number.parseFloat(location.split(",")[1].trim()),
               }
             : undefined,
           images: base64Images,
         }),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "AI判定に失敗しました")
+      console.log("[v0] API response status:", response.status)
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text()
+        console.error("[v0] Non-JSON response:", text.substring(0, 200))
+        throw new Error("サーバーエラーが発生しました。管理者にお問い合わせください。")
       }
 
       const result = await response.json()
+
+      if (!response.ok) {
+        console.error("[v0] API error response:", result)
+        throw new Error(result.error || "AI判定に失敗しました")
+      }
+
       console.log("[v0] AI detection completed:", result.data.id)
 
       toast.success("AI判定が完了しました")
