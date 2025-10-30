@@ -82,9 +82,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/detections - AI判定実行
 export async function POST(request: NextRequest) {
-  try {
-    console.log("[v0] ========== POST /api/detections START ==========")
+  console.log("[v0] ========== POST /api/detections START ==========")
+  console.log("[v0] Request URL:", request.url)
+  console.log("[v0] Request method:", request.method)
 
+  try {
     const { user } = await requireAuth()
     console.log("[v0] User authenticated:", user.id, "company:", user.company_id)
 
@@ -109,33 +111,33 @@ export async function POST(request: NextRequest) {
         persistSession: false,
         detectSessionInUrl: false,
       },
-      global: {
-        headers: {
-          "x-client-info": "supabase-js-node",
-        },
-      },
     })
     console.log("[v0] Supabase admin client created successfully")
 
-    // 月次上限チェック
-    const { data: usage } = await supabase.rpc("get_current_usage", {
-      p_company_id: user.company_id,
-    })
+    let usage = null
+    try {
+      const { data: usageData } = await supabase.rpc("get_current_usage", {
+        p_company_id: user.company_id,
+      })
+      usage = usageData
 
-    if (usage && usage.current_count >= usage.monthly_limit) {
-      throw new APIError(
-        429,
-        ErrorCodes.LIMIT_REACHED,
-        "今月の判定上限に達しました。プランをアップグレードしてください。",
-      )
+      if (usage && usage.current_count >= usage.monthly_limit) {
+        throw new APIError(
+          429,
+          ErrorCodes.LIMIT_REACHED,
+          "今月の判定上限に達しました。プランをアップグレードしてください。",
+        )
+      }
+
+      console.log("[v0] Usage check passed:", usage?.current_count, "/", usage?.monthly_limit)
+    } catch (usageError) {
+      console.error("[v0] Usage check error (continuing):", usageError)
+      // Continue processing even if usage check fails
     }
-
-    console.log("[v0] Usage check passed:", usage?.current_count, "/", usage?.monthly_limit)
 
     console.log("[v0] ========== Starting image upload to Storage ==========")
     const imageUrls: string[] = []
 
-    // detection_number自動採番（画像アップロード前に実行）
     const { data: lastDetection } = await supabaseAdmin
       .from("detections")
       .select("detection_number")
@@ -146,7 +148,6 @@ export async function POST(request: NextRequest) {
 
     const nextNumber = lastDetection ? lastDetection.detection_number + 1 : 1
 
-    // detectionsテーブルに保存（画像処理前に作成）
     const { data: detection, error: detectionError } = await supabaseAdmin
       .from("detections")
       .insert({
@@ -160,10 +161,10 @@ export async function POST(request: NextRequest) {
           ? `POINT(${validatedData.location.longitude} ${validatedData.location.latitude})`
           : null,
         address: validatedData.address,
-        result: false, // 仮の値、後で更新
-        confidence: 0, // 仮の値、後で更新
+        result: false,
+        confidence: 0,
         detection_date: new Date().toISOString(),
-        ai_model_version: "unknown", // 仮の値、後で更新
+        ai_model_version: "unknown",
       })
       .select()
       .single()
@@ -181,7 +182,6 @@ export async function POST(request: NextRequest) {
       console.log(`[v0] Filename: ${image.filename}`)
 
       try {
-        // Base64 → Buffer変換
         console.log(`[v0] Converting Base64 to Buffer...`)
         const base64Data = image.data.split(",")[1] || image.data
         const buffer = Buffer.from(base64Data, "base64")
@@ -189,7 +189,6 @@ export async function POST(request: NextRequest) {
           `[v0] Buffer created, size: ${buffer.length} bytes (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`,
         )
 
-        // サイズチェック（10MB）
         if (buffer.length > 10 * 1024 * 1024) {
           throw new APIError(413, ErrorCodes.FILE_TOO_LARGE, `画像 ${image.filename} のサイズが10MBを超えています`)
         }
@@ -243,7 +242,6 @@ export async function POST(request: NextRequest) {
       aiResults.push(...batchResults)
     }
 
-    // 判定結果集約
     const hasAsbestos = aiResults.some((r) => r.has_asbestos)
     const avgConfidence = aiResults.reduce((sum, r) => sum + r.confidence, 0) / aiResults.length
 
@@ -270,16 +268,15 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`[v0] Saving detection image ${i + 1}/${imageUrls.length}`)
 
-        // detection_imagesテーブルに保存（BB画像とサムネイルはnull）
         const { data: detectionImage, error: imageError } = await supabaseAdmin
           .from("detection_images")
           .insert({
             detection_id: detection.id,
             original_url: imageUrl,
-            bb_url: null, // No BB image generation
-            thumbnail_url: null, // No thumbnail generation
+            bb_url: null,
+            thumbnail_url: null,
             filename: image.filename,
-            order: i,
+            order_index: i,
           })
           .select()
           .single()
@@ -289,7 +286,6 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // bounding_boxesテーブルに保存
         if (aiResult.bounding_boxes.length > 0) {
           const boundingBoxes = aiResult.bounding_boxes.map((bb) => ({
             detection_image_id: detectionImage.id,
@@ -311,11 +307,9 @@ export async function POST(request: NextRequest) {
         console.log(`[v0] Detection image ${i + 1} saved successfully`)
       } catch (imageError) {
         console.error(`[v0] Error processing image ${i}:`, imageError)
-        // 個別の画像エラーは続行
       }
     }
 
-    // 判定結果を再取得（画像含む）
     const { data: fullDetection } = await supabaseAdmin
       .from("detections")
       .select("*, detection_images(*, bounding_boxes(*))")

@@ -3,6 +3,7 @@ import { CompletionResult } from "@/components/ai/completion-result"
 import { CompletionActions } from "@/components/ai/completion-actions"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { WaveHeader } from "@/components/layout/wave-header"
+import { redirect } from "next/navigation"
 
 export default async function AICompletePage({
   searchParams,
@@ -14,11 +15,15 @@ export default async function AICompletePage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // if (!user) {
-  //   redirect("/login")
-  // }
+  if (!user) {
+    redirect("/login")
+  }
 
-  const detectionId = searchParams.id || "0004"
+  const detectionId = searchParams.id
+
+  if (!detectionId) {
+    redirect("/ai")
+  }
 
   return (
     <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
