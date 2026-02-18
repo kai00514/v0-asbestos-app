@@ -58,7 +58,6 @@ export function ImageUpload({ images, onImagesChange }: ImageUploadProps) {
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
-          capture="environment"
           onChange={handleFileSelect}
           className="hidden"
         />
