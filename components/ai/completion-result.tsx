@@ -4,24 +4,147 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, CheckCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useState } from "react"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+
+interface Detection {
+  id: string
+  sample_name: string
+  site_name: string
+  address: string | null
+  result: boolean
+  confidence: number
+  detection_date: string
+  detection_images: Array<{
+    original_url: string
+    bb_url: string | null
+    thumbnail_url: string | null
+  }>
+}
 
 export function CompletionResult({ detectionId }: { detectionId: string }) {
-  const confidence = 92
-  const result = "含有あり"
+  const [detection, setDetection] = useState<Detection | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchDetection() {
+      try {
+        const supabase = getSupabaseBrowserClient()
+
+        // 認証状態を確認
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log("[v0] Current user:", user?.id)
+        console.log("[v0] User metadata:", user?.user_metadata)
+        console.log("[v0] Company ID from metadata:", user?.user_metadata?.company_id)
+        console.log("[v0] Fetching detection:", detectionId)
+
+        // まず、レコードが存在するか確認（.single()を使わない）
+        const { data: allData, error: queryError, count } = await supabase
+          .from("detections")
+          .select(`
+            id,
+            sample_name,
+            site_name,
+            address,
+            result,
+            confidence,
+            detection_date,
+            detection_images(
+              id,
+              original_url,
+              bb_url,
+              thumbnail_url,
+              filename,
+              order_index
+            )
+          `, { count: "exact" })
+          .eq("id", detectionId)
+
+        console.log("[v0] Query result:", { data: allData, count, error: queryError })
+
+        if (queryError) {
+          console.error("[v0] Query error:", {
+            message: queryError.message,
+            code: queryError.code,
+            details: queryError.details,
+            hint: queryError.hint,
+            full: JSON.stringify(queryError, null, 2)
+          })
+          throw new Error(`Supabase query failed: ${queryError.message || 'Unknown error'}`)
+        }
+
+        if (!allData || allData.length === 0) {
+          throw new Error(`判定データが見つかりませんでした (ID: ${detectionId})`)
+        }
+
+        if (allData.length > 1) {
+          console.warn("[v0] Multiple records found:", allData.length)
+        }
+
+        const data = allData[0]
+
+        console.log("[v0] Detection data:", data)
+        setDetection(data)
+      } catch (err) {
+        console.error("[v0] Error fetching detection:", err)
+        setError(err instanceof Error ? err.message : "判定結果の取得に失敗しました")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDetection()
+  }, [detectionId])
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-gray-500">読み込み中...</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error || !detection) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error || "判定結果が見つかりませんでした"}</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const confidence = Math.round(detection.confidence * 100)
+  const result = detection.result ? "含有あり" : "含有なし"
   const isLowConfidence = confidence < 70
+  const firstImage = detection.detection_images[0]
 
   return (
     <div className="space-y-6">
       {/* 結果バッジ */}
       <Card className="text-center">
         <CardContent className="pt-8 pb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 mb-4">
-            <CheckCircle className="w-12 h-12 text-emerald-600" />
+          <div
+            className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+              detection.result ? "bg-red-100" : "bg-emerald-100"
+            }`}
+          >
+            {detection.result ? (
+              <AlertTriangle className="w-12 h-12 text-red-600" />
+            ) : (
+              <CheckCircle className="w-12 h-12 text-emerald-600" />
+            )}
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">判定完了</h2>
-          <Badge variant="destructive" className="text-xl px-6 py-2">
+          <Badge variant={detection.result ? "destructive" : "default"} className="text-xl px-6 py-2">
             {result}
           </Badge>
         </CardContent>
@@ -58,12 +181,22 @@ export function CompletionResult({ detectionId }: { detectionId: string }) {
             </TabsList>
             <TabsContent value="original">
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                <img src="/asbestos-detection-original.jpg" alt="元画像" className="w-full h-full object-contain" />
+                {firstImage?.original_url ? (
+                  <img src={firstImage.original_url} alt="元画像" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-400">画像がありません</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
             <TabsContent value="bb">
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                <img src="/asbestos-detection-original.jpg" alt="BB画像" className="w-full h-full object-contain" />
+                <img
+                  src={firstImage?.bb_url || "/no-result.svg"}
+                  alt={firstImage?.bb_url ? "BB画像" : "No Result"}
+                  className="w-full h-full object-contain"
+                />
               </div>
             </TabsContent>
           </Tabs>
@@ -75,19 +208,21 @@ export function CompletionResult({ detectionId }: { detectionId: string }) {
         <CardContent className="pt-6 space-y-4">
           <div>
             <h4 className="text-sm text-gray-600 mb-1">試料名称</h4>
-            <p className="font-medium">外壁 スレート版</p>
+            <p className="font-medium">{detection.sample_name}</p>
           </div>
           <div>
             <h4 className="text-sm text-gray-600 mb-1">現場名称</h4>
-            <Badge variant="secondary">渋谷現場</Badge>
+            <Badge variant="secondary">{detection.site_name}</Badge>
           </div>
-          <div>
-            <h4 className="text-sm text-gray-600 mb-1">取得場所</h4>
-            <p className="text-sm">東京都渋谷区渋谷1-1-1</p>
-          </div>
+          {detection.address && (
+            <div>
+              <h4 className="text-sm text-gray-600 mb-1">取得場所</h4>
+              <p className="text-sm">{detection.address}</p>
+            </div>
+          )}
           <div>
             <h4 className="text-sm text-gray-600 mb-1">判定日時</h4>
-            <p className="text-sm">2025/10/25 14:30</p>
+            <p className="text-sm">{new Date(detection.detection_date).toLocaleString("ja-JP")}</p>
           </div>
         </CardContent>
       </Card>
