@@ -23,9 +23,14 @@ export async function detectAsbestos(imageUrl: string): Promise<AIDetectionResul
   console.log("[v0] ROBOFLOW_WORKFLOW_URL:", workflowUrl)
 
   if (!apiKey || !workflowUrl) {
-    console.error("[v0] Roboflow credentials not set, using mock response")
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Roboflow API credentials are not configured. Please set ROBOFLOW_API_KEY and ROBOFLOW_WORKFLOW_URL.")
+    }
+    console.warn("[v0] Roboflow credentials not set, using mock response (development only)")
     return getMockResponse()
   }
+
+  const startTime = Date.now()
 
   try {
     console.log("[v0] Calling Roboflow API for asbestos detection")
@@ -77,12 +82,16 @@ export async function detectAsbestos(imageUrl: string): Promise<AIDetectionResul
         class: p.class || "asbestos",
       })),
       model_version: "roboflow-v1",
-      processing_time_ms: Date.now(),
+      processing_time_ms: Date.now() - startTime,
     }
   } catch (error) {
     console.error("[v0] AI detection error:", error)
-    // エラー時はモックレスポンスを返す
-    console.log("[v0] Falling back to mock response")
+    if (process.env.NODE_ENV === "production") {
+      // 本番環境ではエラーをそのまま投げる（モックに逃げない）
+      throw error
+    }
+    // 開発環境のみモックにフォールバック
+    console.warn("[v0] Falling back to mock response (development only)")
     return getMockResponse()
   }
 }
