@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation"
 import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { getDetections } from "@/lib/api/detections"
 import { DetectionList } from "@/components/detections/detection-list"
 import { DetectionFilters } from "@/components/detections/detection-filters"
@@ -18,33 +20,36 @@ export default async function DetectionsPage({
 }) {
   const resolvedParams = await searchParams
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false },
-  })
-
+  const supabase = await getSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect("/login")
+  }
+
+  const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  })
+
   let detections: Awaited<ReturnType<typeof getDetections>> = []
 
-  if (user) {
-    const { data: userData } = await supabase.from("users").select("company_id").eq("id", user.id).maybeSingle()
+  const { data: userData } = await supabaseAdmin.from("users").select("company_id").eq("id", user.id).maybeSingle()
 
-    if (userData?.company_id) {
-      try {
-        console.log("[v0] Fetching detections for company:", userData.company_id)
-        detections = await getDetections(userData.company_id, {
-          search: resolvedParams.search,
-          result: resolvedParams.result === "true" ? true : resolvedParams.result === "false" ? false : undefined,
-          siteTagId: resolvedParams.siteTagId,
-          startDate: resolvedParams.startDate,
-          endDate: resolvedParams.endDate,
-        })
-        console.log("[v0] Detections fetched:", detections.length)
-      } catch (error) {
-        console.error("[v0] Failed to fetch detections:", error)
-      }
+  if (userData?.company_id) {
+    try {
+      console.log("[v0] Fetching detections for company:", userData.company_id)
+      detections = await getDetections(userData.company_id, {
+        search: resolvedParams.search,
+        result: resolvedParams.result === "true" ? true : resolvedParams.result === "false" ? false : undefined,
+        siteTagId: resolvedParams.siteTagId,
+        startDate: resolvedParams.startDate,
+        endDate: resolvedParams.endDate,
+      })
+      console.log("[v0] Detections fetched:", detections.length)
+    } catch (error) {
+      console.error("[v0] Failed to fetch detections:", error)
     }
   }
 
