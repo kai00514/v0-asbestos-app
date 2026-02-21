@@ -7,6 +7,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { detectAsbestos } from "@/lib/ai/client"
 import { createClient } from "@supabase/supabase-js"
 import { uploadImageToStorage } from "@/lib/storage/upload"
+import { drawBoundingBoxes, generateThumbnail } from "@/lib/images/process"
 
 // GET /api/detections - 判定一覧取得
 export async function GET(request: NextRequest) {
@@ -270,14 +271,64 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`[v0] Saving detection image ${i + 1}/${imageUrls.length}`)
 
-        // detection_imagesテーブルに保存（BB画像とサムネイルはnull）
+        // 元画像のBufferを取得（既にアップロード済み）
+        const base64Data = image.data.split(",")[1] || image.data
+        const originalBuffer = Buffer.from(base64Data, "base64")
+
+        let bbUrl: string | null = null
+        let thumbnailUrl: string | null = null
+
+        // BB描画済み画像を生成してアップロード
+        console.log(`[v0] bounding_boxes count: ${aiResult.bounding_boxes.length}`)
+        if (aiResult.bounding_boxes.length > 0) {
+          console.log(`[v0] Drawing bounding boxes for image ${i + 1}`)
+          try {
+            const bbBuffer = await drawBoundingBoxes(originalBuffer, aiResult.bounding_boxes)
+            console.log(`[v0] BB buffer generated, size: ${bbBuffer.length} bytes`)
+
+            const timestamp = Date.now()
+            const ext = image.filename.split(".").pop()?.toLowerCase() || "jpg"
+            const bbFileName = `bb_${i.toString().padStart(3, "0")}_${timestamp}.${ext}`
+            const bbFilePath = `${user.company_id}/${detection.id}/${bbFileName}`
+            const contentType = `image/${ext === "jpg" ? "jpeg" : ext}`
+
+            bbUrl = await uploadImageToStorage(bbBuffer, bbFilePath, contentType)
+            console.log(`[v0] BB image uploaded:`, bbUrl)
+          } catch (bbError: any) {
+            console.error(`[v0] Error generating BB image:`, bbError?.message || bbError)
+            console.error(`[v0] BB error stack:`, bbError?.stack)
+            // BB生成エラーは続行（元画像は保存）
+          }
+        } else {
+          console.log(`[v0] No bounding boxes to draw for image ${i + 1}`)
+        }
+
+        // サムネイル画像を生成してアップロード
+        console.log(`[v0] Generating thumbnail for image ${i + 1}`)
+        try {
+          const thumbnailBuffer = await generateThumbnail(originalBuffer, 300)
+          console.log(`[v0] Thumbnail buffer generated, size: ${thumbnailBuffer.length} bytes`)
+
+          const timestamp = Date.now()
+          const thumbFileName = `thumb_${i.toString().padStart(3, "0")}_${timestamp}.jpg`
+          const thumbFilePath = `${user.company_id}/${detection.id}/${thumbFileName}`
+
+          thumbnailUrl = await uploadImageToStorage(thumbnailBuffer, thumbFilePath, "image/jpeg")
+          console.log(`[v0] Thumbnail uploaded:`, thumbnailUrl)
+        } catch (thumbError: any) {
+          console.error(`[v0] Error generating thumbnail:`, thumbError?.message || thumbError)
+          console.error(`[v0] Thumbnail error stack:`, thumbError?.stack)
+          // サムネイル生成エラーは続行（元画像は保存）
+        }
+
+        // detection_imagesテーブルに保存
         const { data: detectionImage, error: imageError } = await supabaseAdmin
           .from("detection_images")
           .insert({
             detection_id: detection.id,
             original_url: imageUrl,
-            bb_url: null, // No BB image generation
-            thumbnail_url: null, // No thumbnail generation
+            bb_url: bbUrl,
+            thumbnail_url: thumbnailUrl,
             filename: image.filename,
             order_index: i,
           })
