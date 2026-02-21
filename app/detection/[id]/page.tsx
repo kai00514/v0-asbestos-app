@@ -20,7 +20,7 @@ export default async function DetectionDetailPage({ params }: { params: { id: st
       <WaveHeader title={`判定詳細 #${params.id}`} showLogo={false} showBackButton />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl space-y-6">
-        <ImageGallery />
+        <ImageGallery detectionId={params.id} />
         <DetectionMetadata id={params.id} />
         <DetectionActions id={params.id} />
       </main>
