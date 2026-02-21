@@ -8,14 +8,16 @@ import { WaveHeader } from "@/components/layout/wave-header"
 export default async function DetectionsPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     result?: string
     siteTagId?: string
     startDate?: string
     endDate?: string
-  }
+  }>
 }) {
+  const resolvedParams = await searchParams
+
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   })
@@ -33,11 +35,11 @@ export default async function DetectionsPage({
       try {
         console.log("[v0] Fetching detections for company:", userData.company_id)
         detections = await getDetections(userData.company_id, {
-          search: searchParams.search,
-          result: searchParams.result === "true" ? true : searchParams.result === "false" ? false : undefined,
-          siteTagId: searchParams.siteTagId,
-          startDate: searchParams.startDate,
-          endDate: searchParams.endDate,
+          search: resolvedParams.search,
+          result: resolvedParams.result === "true" ? true : resolvedParams.result === "false" ? false : undefined,
+          siteTagId: resolvedParams.siteTagId,
+          startDate: resolvedParams.startDate,
+          endDate: resolvedParams.endDate,
         })
         console.log("[v0] Detections fetched:", detections.length)
       } catch (error) {

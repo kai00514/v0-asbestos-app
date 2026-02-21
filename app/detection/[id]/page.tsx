@@ -5,7 +5,8 @@ import { DetectionActions } from "@/components/detection/detection-actions"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { WaveHeader } from "@/components/layout/wave-header"
 
-export default async function DetectionDetailPage({ params }: { params: { id: string } }) {
+export default async function DetectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await getSupabaseServerClient()
   const {
     data: { user },
@@ -17,12 +18,12 @@ export default async function DetectionDetailPage({ params }: { params: { id: st
 
   return (
     <div className="min-h-screen bg-gray-300 pb-32 md:pb-0">
-      <WaveHeader title={`判定詳細 #${params.id}`} showLogo={false} showBackButton />
+      <WaveHeader title={`判定詳細 #${id}`} showLogo={false} showBackButton />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl space-y-6">
-        <ImageGallery detectionId={params.id} />
-        <DetectionMetadata id={params.id} />
-        <DetectionActions id={params.id} />
+        <ImageGallery detectionId={id} />
+        <DetectionMetadata id={id} />
+        <DetectionActions id={id} />
       </main>
 
       <BottomNav />
