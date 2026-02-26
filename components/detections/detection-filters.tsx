@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Search, SlidersHorizontal, AlertTriangle, Shield, Clock, RotateCcw, Calendar, ArrowDownUp, Layers } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle } from "@/components/ui/sheet"
 
 type ResultFilter = "all" | "detected" | "not-detected" | "pending"
 type PeriodFilter = "all" | "today" | "week" | "month" | "3months"
@@ -181,7 +181,7 @@ export function DetectionFilters() {
             <div className="px-5 pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">フィルタ</h2>
+                  <SheetTitle className="text-lg font-bold text-gray-900">フィルタ</SheetTitle>
                   <p className="text-xs text-gray-500 mt-0.5">条件を絞り込んで検索</p>
                 </div>
                 {(hasActiveFilter || sortBy !== "newest") && (
