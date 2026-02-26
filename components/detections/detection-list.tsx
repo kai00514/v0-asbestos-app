@@ -27,7 +27,7 @@ export function DetectionList({ detections }: DetectionListProps) {
         <p className="text-sm font-semibold text-gray-500">全 {detections.length} 件</p>
       </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {detections.map((detection) => {
           const isDetected = detection.result === true
           const resultText = isDetected ? "含有あり" : "含有なし"
@@ -46,14 +46,14 @@ export function DetectionList({ detections }: DetectionListProps) {
           return (
             <Link key={detection.id} href={`/detection/${detection.id}`}>
               <div className={`
-                group relative backdrop-blur-xl rounded-2xl p-4 cursor-pointer transition-all duration-200
+                group relative backdrop-blur-xl rounded-xl px-3.5 py-3 cursor-pointer transition-all duration-200
                 ${isDetected
-                  ? "bg-white/80 border-2 border-red-200/80 hover:border-red-300 hover:shadow-lg hover:shadow-red-100/50"
-                  : "bg-white/80 border-2 border-emerald-200/60 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-100/50"
+                  ? "bg-white/80 border-2 border-red-300 hover:border-red-400 hover:shadow-md hover:shadow-red-100/50"
+                  : "bg-white/80 border-2 border-emerald-300 hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-100/50"
                 }
               `}>
                 {/* 結果インジケーター（左側のアクセントライン） */}
-                <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-full ${isDetected ? "bg-red-400" : "bg-emerald-400"}`} />
+                <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-full ${isDetected ? "bg-red-400" : "bg-emerald-400"}`} />
 
                 <div className="flex gap-3.5 pl-2">
                   {/* サムネイル */}
