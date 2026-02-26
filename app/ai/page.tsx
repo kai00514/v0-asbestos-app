@@ -14,10 +14,10 @@ export default async function AIDetectionPage() {
   // }
 
   return (
-    <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-100 pb-24 md:pb-6">
       <WaveHeader title="AI判定" showLogo={false} />
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+      <main className="container mx-auto px-4 py-4 max-w-2xl">
         <AIDetectionForm />
       </main>
 
