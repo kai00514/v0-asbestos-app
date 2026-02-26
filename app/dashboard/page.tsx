@@ -13,8 +13,9 @@ import { BottomNav } from "@/components/layout/bottom-nav"
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { user?: string; period?: "today" | "week" | "month" }
+  searchParams: Promise<{ user?: string; period?: "today" | "week" | "month" }>
 }) {
+  const resolvedSearchParams = await searchParams
   const supabase = await getSupabaseServerClient()
   const {
     data: { user },
@@ -34,8 +35,6 @@ export default async function DashboardPage({
     .eq("id", user.id)
     .maybeSingle()
 
-  console.log("[v0] Dashboard - User data:", userData)
-
   if (!userData) {
     console.error("[v0] Dashboard - User not found in public.users")
     redirect("/login")
@@ -46,8 +45,8 @@ export default async function DashboardPage({
     redirect("/login")
   }
 
-  const selectedUserId = searchParams.user || "all"
-  const period = searchParams.period || "month"
+  const selectedUserId = resolvedSearchParams.user || "all"
+  const period = resolvedSearchParams.period || "month"
 
   try {
     const [stats, teamMembers] = await Promise.all([
@@ -64,7 +63,7 @@ export default async function DashboardPage({
           <DashboardTabs period={period} />
 
           <div className="space-y-4">
-            <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} />
+            <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} period={period} />
             <UsageStatusCard
               currentUsage={stats.currentUsage}
               monthlyLimit={stats.monthlyLimit}

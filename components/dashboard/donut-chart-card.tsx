@@ -6,9 +6,16 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
 interface DonutChartCardProps {
   positiveCount: number
   negativeCount: number
+  period?: "today" | "week" | "month"
 }
 
-export function DonutChartCard({ positiveCount, negativeCount }: DonutChartCardProps) {
+const periodLabels: Record<string, string> = {
+  today: "今日の判定回数",
+  week: "今週の判定回数",
+  month: "今月の判定回数",
+}
+
+export function DonutChartCard({ positiveCount, negativeCount, period = "month" }: DonutChartCardProps) {
   const data = [
     { name: "検出あり", value: positiveCount, color: "#EF4444" },
     { name: "検出なし", value: negativeCount, color: "#10B981" },
@@ -19,7 +26,7 @@ export function DonutChartCard({ positiveCount, negativeCount }: DonutChartCardP
   return (
     <Card className="bg-white shadow-sm rounded-xl border-0">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-gray-900">今月の判定回数</CardTitle>
+        <CardTitle className="text-base font-semibold text-gray-900">{periodLabels[period]}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-6">
