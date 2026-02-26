@@ -17,7 +17,7 @@ export default async function DetectionDetailPage({ params }: { params: Promise<
   // }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-32 md:pb-0">
+    <div className="min-h-screen bg-gray-100 pb-24 md:pb-6">
       <WaveHeader title="判定詳細" showLogo={false} showBackButton />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl space-y-6">

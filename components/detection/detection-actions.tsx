@@ -11,24 +11,32 @@ export function DetectionActions({ id }: { id: string }) {
     // PDF生成ロジック
   }
 
+  const handleReportFalsePositive = () => {
+    toast.info("誤検出報告を受け付けました。確認後、ご連絡いたします。")
+  }
+
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-0 right-0 px-4 space-y-3 max-w-4xl mx-auto">
+    <div className="space-y-3">
       <Button
         onClick={handleDownloadPDF}
-        className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-base font-medium"
+        className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-base font-medium rounded-xl shadow-sm"
       >
         <Download className="w-5 h-5 mr-2" />
         判定結果報告書をダウンロード
       </Button>
 
       <div className="flex gap-3">
-        <Button asChild variant="outline" className="flex-1 h-11 bg-transparent">
+        <Button asChild variant="outline" className="flex-1 h-11 rounded-xl border-gray-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700">
           <Link href={`/labs?detectionId=${id}`}>
             <Building2 className="w-4 h-4 mr-2" />
             分析機関へ依頼
           </Link>
         </Button>
-        <Button variant="ghost" className="flex-1 h-11 text-gray-600">
+        <Button
+          variant="outline"
+          className="flex-1 h-11 rounded-xl border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+          onClick={handleReportFalsePositive}
+        >
           <AlertCircle className="w-4 h-4 mr-2" />
           誤検出を報告
         </Button>
