@@ -65,7 +65,7 @@ export default async function LabsPage({
   const labs = await getLabs()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-24 md:pb-6">
+    <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">
       <WaveHeader title="分析機関一覧" showLogo={false} />
 
       {resolvedParams.detectionId && (
