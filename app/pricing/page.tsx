@@ -15,10 +15,10 @@ export default async function PricingPage() {
   // }
 
   return (
-    <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">
+    <div className="min-h-screen bg-gray-100 pb-24 md:pb-6">
       <WaveHeader title="料金プラン" showLogo={false} />
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 py-6 max-w-4xl">
         <PricingCards />
         <PricingFAQ />
       </main>
