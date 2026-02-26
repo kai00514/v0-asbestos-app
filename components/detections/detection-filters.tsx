@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react"
+import { Search, SlidersHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,20 +13,20 @@ export function DetectionFilters() {
   const [search, setSearch] = useState("")
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-      <div className="flex gap-3 items-center">
+    <div className="backdrop-blur-xl bg-white/70 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/80 p-4 mb-5">
+      <div className="flex gap-2.5 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="試料名・現場・住所で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 bg-gray-50 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            className="pl-10 h-10 bg-white/80 border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-sm placeholder:text-gray-400"
           />
         </div>
 
         <Select defaultValue="newest">
-          <SelectTrigger className="w-36 h-10 bg-gray-50 border-gray-200 rounded-lg text-sm">
+          <SelectTrigger className="w-32 h-10 bg-white/80 border-gray-300 rounded-xl text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -42,7 +42,7 @@ export function DetectionFilters() {
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 bg-gray-50 border-gray-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 transition-all"
+              className="h-10 w-10 bg-white/80 border-gray-300 rounded-xl hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-600 transition-all"
             >
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
