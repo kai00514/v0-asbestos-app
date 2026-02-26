@@ -25,10 +25,10 @@ export function DonutChartCard({ positiveCount, negativeCount, period = "month" 
 
   return (
     <Card className="bg-white shadow-sm rounded-xl border-0">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-1">
         <CardTitle className="text-base font-semibold text-gray-900">{periodLabels[period]}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-1">
         <div className="flex items-center justify-between gap-6">
           <div className="flex-1 space-y-3">
             {data.map((item) => (

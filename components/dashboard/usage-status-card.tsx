@@ -19,10 +19,10 @@ export function UsageStatusCard({ currentUsage, monthlyLimit, usagePercentage }:
 
   return (
     <Card className="bg-white shadow-sm rounded-xl border-0">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-1">
         <CardTitle className="text-base font-semibold text-gray-900">今月の利用状況</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 pt-1">
         {isWarning && (
           <Alert variant="default" className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />

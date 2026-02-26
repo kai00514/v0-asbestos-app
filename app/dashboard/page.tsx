@@ -58,11 +58,11 @@ export default async function DashboardPage({
       <div className="min-h-screen bg-gray-300 pb-20 md:pb-0">
         <DashboardHeader />
 
-        <main className="px-4 -mt-8 space-y-4 max-w-md mx-auto relative z-10">
+        <main className="px-4 -mt-8 space-y-3 max-w-md mx-auto relative z-10">
           <AccountSelector teamMembers={teamMembers} selectedUserId={selectedUserId} />
           <DashboardTabs period={period} />
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <DonutChartCard positiveCount={stats.positiveCount} negativeCount={stats.negativeCount} period={period} />
             <UsageStatusCard
               currentUsage={stats.currentUsage}
