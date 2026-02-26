@@ -1,20 +1,102 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Search, SlidersHorizontal, AlertTriangle, Shield, Clock, RotateCcw, Calendar, ArrowDownUp, Layers } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 
 type ResultFilter = "all" | "detected" | "not-detected" | "pending"
 type PeriodFilter = "all" | "today" | "week" | "month" | "3months"
+type SortOption = "newest" | "oldest" | "result" | "site"
 
 export function DetectionFilters() {
-  const [search, setSearch] = useState("")
-  const [resultFilter, setResultFilter] = useState<ResultFilter>("all")
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all")
-  const [sortBy, setSortBy] = useState("newest")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const currentResult = searchParams.get("result")
+  const currentSort = (searchParams.get("sort") as SortOption) || "newest"
+  const currentSearch = searchParams.get("search") || ""
+
+  // searchParamsからresultFilterの初期値を導出
+  const deriveResultFilter = (): ResultFilter => {
+    if (currentResult === "true") return "detected"
+    if (currentResult === "false") return "not-detected"
+    return "all"
+  }
+
+  // searchParamsからperiodFilterの初期値を導出
+  const derivePeriodFilter = (): PeriodFilter => {
+    const start = searchParams.get("startDate")
+    if (!start) return "all"
+    const today = new Date().toISOString().split("T")[0]
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]
+    const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0]
+    const threeMonthsAgo = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0]
+    if (start === today) return "today"
+    if (start === weekAgo) return "week"
+    if (start === monthAgo) return "month"
+    if (start === threeMonthsAgo) return "3months"
+    return "all"
+  }
+
+  const [search, setSearch] = useState(currentSearch)
+  const [resultFilter, setResultFilter] = useState<ResultFilter>(deriveResultFilter)
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>(derivePeriodFilter)
+  const [sortBy, setSortBy] = useState<SortOption>(currentSort)
+
+  const buildUrl = useCallback((overrides?: {
+    search?: string
+    result?: ResultFilter
+    period?: PeriodFilter
+    sort?: SortOption
+  }) => {
+    const params = new URLSearchParams()
+
+    const s = overrides?.search ?? search
+    const r = overrides?.result ?? resultFilter
+    const p = overrides?.period ?? periodFilter
+    const so = overrides?.sort ?? sortBy
+
+    if (s) params.set("search", s)
+    if (r === "detected") params.set("result", "true")
+    else if (r === "not-detected") params.set("result", "false")
+
+    if (p !== "all") {
+      const now = new Date()
+      const today = now.toISOString().split("T")[0]
+      let startDate = ""
+      if (p === "today") startDate = today
+      else if (p === "week") startDate = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]
+      else if (p === "month") startDate = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0]
+      else if (p === "3months") startDate = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0]
+      if (startDate) params.set("startDate", startDate)
+    }
+
+    if (so !== "newest") params.set("sort", so)
+
+    const qs = params.toString()
+    return `/detections${qs ? `?${qs}` : ""}`
+  }, [search, resultFilter, periodFilter, sortBy])
+
+  // 検索実行（Enter or blur）
+  const handleSearch = useCallback(() => {
+    router.push(buildUrl({ search }))
+  }, [router, buildUrl, search])
+
+  // フィルター適用
+  const handleApply = useCallback(() => {
+    router.push(buildUrl())
+  }, [router, buildUrl])
+
+  const handleReset = () => {
+    setResultFilter("all")
+    setPeriodFilter("all")
+    setSortBy("newest")
+    setSearch("")
+    router.push("/detections")
+  }
 
   const resultOptions: { value: ResultFilter; label: string; icon: React.ReactNode; activeClass: string }[] = [
     {
@@ -51,7 +133,7 @@ export function DetectionFilters() {
     { value: "3months", label: "3ヶ月" },
   ]
 
-  const sortOptions = [
+  const sortOptions: { value: SortOption; label: string }[] = [
     { value: "newest", label: "新着順" },
     { value: "oldest", label: "古い順" },
     { value: "result", label: "判定結果順" },
@@ -60,12 +142,6 @@ export function DetectionFilters() {
 
   const hasActiveFilter = resultFilter !== "all" || periodFilter !== "all"
   const activeFilterCount = (resultFilter !== "all" ? 1 : 0) + (periodFilter !== "all" ? 1 : 0)
-
-  const handleReset = () => {
-    setResultFilter("all")
-    setPeriodFilter("all")
-    setSortBy("newest")
-  }
 
   return (
     <div className="backdrop-blur-xl bg-white/70 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/80 p-4 mb-5">
@@ -76,21 +152,10 @@ export function DetectionFilters() {
             placeholder="試料名・現場・住所で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
             className="pl-10 h-10 bg-white/80 border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-sm placeholder:text-gray-400"
           />
         </div>
-
-        <Select defaultValue="newest">
-          <SelectTrigger className="w-32 h-10 bg-white/80 border-gray-300 rounded-xl text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">新着順</SelectItem>
-            <SelectItem value="oldest">古い順</SelectItem>
-            <SelectItem value="result">判定結果順</SelectItem>
-            <SelectItem value="site">現場名順</SelectItem>
-          </SelectContent>
-        </Select>
 
         <Sheet>
           <SheetTrigger asChild>
@@ -119,7 +184,7 @@ export function DetectionFilters() {
                   <h2 className="text-lg font-bold text-gray-900">フィルタ</h2>
                   <p className="text-xs text-gray-500 mt-0.5">条件を絞り込んで検索</p>
                 </div>
-                {hasActiveFilter && (
+                {(hasActiveFilter || sortBy !== "newest") && (
                   <button
                     onClick={handleReset}
                     className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-500 bg-gray-100 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all"
@@ -216,7 +281,10 @@ export function DetectionFilters() {
             {/* 適用ボタン（固定フッター） */}
             <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-gray-200">
               <SheetClose asChild>
-                <Button className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-500/30 transition-all">
+                <Button
+                  onClick={handleApply}
+                  className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-500/30 transition-all"
+                >
                   フィルタを適用
                 </Button>
               </SheetClose>

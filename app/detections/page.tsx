@@ -16,6 +16,7 @@ export default async function DetectionsPage({
     siteTagId?: string
     startDate?: string
     endDate?: string
+    sort?: string
   }>
 }) {
   const resolvedParams = await searchParams
@@ -46,6 +47,7 @@ export default async function DetectionsPage({
         siteTagId: resolvedParams.siteTagId,
         startDate: resolvedParams.startDate,
         endDate: resolvedParams.endDate,
+        sort: resolvedParams.sort,
       })
       console.log("[v0] Detections fetched:", detections.length)
     } catch (error) {

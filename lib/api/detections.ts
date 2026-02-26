@@ -18,6 +18,7 @@ export async function getDetections(
     siteTagId?: string
     startDate?: string
     endDate?: string
+    sort?: string
   },
 ): Promise<DetectionWithImages[]> {
   const supabase = createClient<Database>(
@@ -38,7 +39,21 @@ export async function getDetections(
     )
     .eq("company_id", companyId)
     .eq("is_deleted", false)
-    .order("detection_date", { ascending: false })
+
+  // ソート適用
+  switch (filters?.sort) {
+    case "oldest":
+      query = query.order("detection_date", { ascending: true })
+      break
+    case "result":
+      query = query.order("result", { ascending: false }).order("detection_date", { ascending: false })
+      break
+    case "site":
+      query = query.order("site_name", { ascending: true }).order("detection_date", { ascending: false })
+      break
+    default:
+      query = query.order("detection_date", { ascending: false })
+  }
 
   // フィルター適用
   if (filters?.search) {
