@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,21 +13,38 @@ export function DetectionFilters() {
   const [search, setSearch] = useState("")
 
   return (
-    <div className="space-y-4 mb-6">
-      <div className="flex gap-3">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      <div className="flex gap-3 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="試料名・現場・住所で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-11"
+            className="pl-10 h-10 bg-gray-50 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
           />
         </div>
+
+        <Select defaultValue="newest">
+          <SelectTrigger className="w-36 h-10 bg-gray-50 border-gray-200 rounded-lg text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">新着順</SelectItem>
+            <SelectItem value="oldest">古い順</SelectItem>
+            <SelectItem value="result">判定結果順</SelectItem>
+            <SelectItem value="site">現場名順</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="h-11 w-11 bg-transparent">
-              <SlidersHorizontal className="h-5 w-5" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 bg-gray-50 border-gray-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 transition-all"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </SheetTrigger>
           <SheetContent>
@@ -69,18 +86,6 @@ export function DetectionFilters() {
           </SheetContent>
         </Sheet>
       </div>
-
-      <Select defaultValue="newest">
-        <SelectTrigger className="w-full md:w-48 h-11">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="newest">新着順</SelectItem>
-          <SelectItem value="oldest">古い順</SelectItem>
-          <SelectItem value="result">判定結果順</SelectItem>
-          <SelectItem value="site">現場名順</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   )
 }

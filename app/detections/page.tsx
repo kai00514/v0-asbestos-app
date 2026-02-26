@@ -54,10 +54,10 @@ export default async function DetectionsPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">
+    <div className="min-h-screen bg-gray-100 pb-24 md:pb-6">
       <WaveHeader title="判定一覧" showLogo={false} />
 
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
+      <main className="container mx-auto px-4 py-4 max-w-2xl">
         <DetectionFilters />
         <DetectionList detections={detections} />
       </main>
