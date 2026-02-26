@@ -19,9 +19,12 @@ interface AccountInfoProps {
 }
 
 export function AccountInfo({ user, company }: AccountInfoProps) {
-  const copyAccountId = () => {
-    navigator.clipboard.writeText(user.id)
-    toast.success("アカウントIDをコピーしました")
+  // UUIDから短い会員番号を生成（先頭8文字をハイフン付きで整形）
+  const memberId = `M-${user.id.substring(0, 8).toUpperCase()}`
+
+  const copyMemberId = () => {
+    navigator.clipboard.writeText(memberId)
+    toast.success("会員番号をコピーしました")
   }
 
   return (
@@ -47,11 +50,11 @@ export function AccountInfo({ user, company }: AccountInfoProps) {
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm text-gray-600 mb-1">アカウントID</h3>
+            <h3 className="text-sm text-gray-600 mb-1">会員番号</h3>
             <div className="flex items-center gap-2">
-              <code className="text-sm bg-gray-100 px-3 py-1 rounded flex-1 truncate">{user.id}</code>
-              <button onClick={copyAccountId} className="p-2 hover:bg-gray-100 rounded">
-                <Copy className="w-4 h-4" />
+              <code className="text-sm bg-gray-100 px-3 py-1.5 rounded font-mono font-semibold tracking-wider">{memberId}</code>
+              <button onClick={copyMemberId} className="p-2 hover:bg-gray-100 rounded transition-colors" title="会員番号をコピー">
+                <Copy className="w-4 h-4 text-gray-500" />
               </button>
             </div>
           </div>
