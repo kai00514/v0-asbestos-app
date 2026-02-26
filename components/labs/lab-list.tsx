@@ -86,7 +86,7 @@ export function LabList({ labs }: LabListProps) {
                 <p className="text-[11px] text-gray-500 line-clamp-1">{lab.description}</p>
               )}
               {lab.address && (
-                <div className="flex items-center gap-1 text-[11px] text-gray-700">
+                <div className="flex items-center gap-1 text-[11px] text-gray-900">
                   <MapPin className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                   <span className="truncate">{lab.address}</span>
                 </div>
@@ -97,13 +97,13 @@ export function LabList({ labs }: LabListProps) {
             <div className="grid grid-cols-2 gap-1.5 mt-2 pl-9">
               <div className="flex items-center gap-1 bg-gray-50/80 rounded-lg px-2 py-1 border border-gray-300">
                 <Clock className="w-3 h-3 text-blue-500 flex-shrink-0" />
-                <span className="text-[10px] text-gray-600">納期</span>
-                <span className="text-[11px] text-gray-900 font-semibold ml-auto">{formatDelivery(lab.delivery_days_min, lab.delivery_days_max)}</span>
+                <span className="text-[10px] text-gray-700">納期</span>
+                <span className="text-[11px] text-gray-950 font-bold ml-auto">{formatDelivery(lab.delivery_days_min, lab.delivery_days_max)}</span>
               </div>
               <div className="flex items-center gap-1 bg-gray-50/80 rounded-lg px-2 py-1 border border-gray-300">
                 <Banknote className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                <span className="text-[10px] text-gray-600">料金</span>
-                <span className="text-[11px] text-gray-900 font-semibold ml-auto">{formatPrice(lab.price_min, lab.price_max)}</span>
+                <span className="text-[10px] text-gray-700">料金</span>
+                <span className="text-[11px] text-gray-950 font-bold ml-auto">{formatPrice(lab.price_min, lab.price_max)}</span>
               </div>
             </div>
 
