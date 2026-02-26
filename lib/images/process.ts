@@ -53,7 +53,7 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
     const processedImage = await image
       .composite([
         {
-          input: Buffer.from(svgOverlay),
+          input: Buffer.from(svgOverlay, "utf-8"),
           top: 0,
           left: 0,
         },
@@ -142,7 +142,7 @@ function generateBoundingBoxSVG(boundingBoxes: BoundingBox[], imageWidth: number
     })
     .join("\n")
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">${defs}${boxes}</svg>`
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">${defs}${boxes}</svg>`
 }
 
 /**
