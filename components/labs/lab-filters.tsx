@@ -14,21 +14,38 @@ export function LabFilters() {
   const [search, setSearch] = useState("")
 
   return (
-    <div className="space-y-4 mb-6">
-      <div className="flex gap-3">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      <div className="flex gap-3 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="機関名・地域で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-11"
+            className="pl-10 h-10 bg-gray-50 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
           />
         </div>
+
+        <Select defaultValue="rating">
+          <SelectTrigger className="w-36 h-10 bg-gray-50 border-gray-200 rounded-lg text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rating">評価順</SelectItem>
+            <SelectItem value="price">料金順（安い順）</SelectItem>
+            <SelectItem value="delivery">納期順（早い順）</SelectItem>
+            <SelectItem value="track-record">実績順（多い順）</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="h-11 w-11 bg-transparent">
-              <SlidersHorizontal className="h-5 w-5" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 bg-gray-50 border-gray-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 transition-all"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </SheetTrigger>
           <SheetContent>
@@ -48,18 +65,6 @@ export function LabFilters() {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-base font-medium">実績件数</Label>
-                <Slider defaultValue={[100]} max={1000} step={50} className="mt-2" />
-                <p className="text-xs text-gray-600">100件以上</p>
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-base font-medium">料金範囲</Label>
-                <Slider defaultValue={[10000, 50000]} max={100000} step={5000} className="mt-2" />
-                <p className="text-xs text-gray-600">¥10,000 〜 ¥50,000</p>
               </div>
 
               <div className="space-y-3">
@@ -96,19 +101,6 @@ export function LabFilters() {
           </SheetContent>
         </Sheet>
       </div>
-
-      <Select defaultValue="distance">
-        <SelectTrigger className="w-full md:w-48 h-11">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="distance">距離順</SelectItem>
-          <SelectItem value="price">料金順（安い順）</SelectItem>
-          <SelectItem value="delivery">納期順（早い順）</SelectItem>
-          <SelectItem value="track-record">実績順（多い順）</SelectItem>
-          <SelectItem value="rating">評価順（高い順）</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   )
 }
