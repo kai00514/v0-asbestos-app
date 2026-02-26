@@ -44,7 +44,7 @@ export function DetectionList({ detections }: DetectionListProps) {
             : null
 
           return (
-            <Link key={detection.id} href={`/detection/${detection.id}`}>
+            <Link key={detection.id} href={`/detection/${detection.id}`} className="block">
               <div className={`
                 group relative backdrop-blur-xl rounded-xl px-3.5 py-3 cursor-pointer transition-all duration-200
                 ${isDetected
