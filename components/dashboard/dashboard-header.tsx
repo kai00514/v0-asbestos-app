@@ -1,50 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Bell, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useRouter } from "next/navigation"
-
-const notifications = [
-  {
-    id: 1,
-    type: "limit",
-    title: "判定上限に達しました",
-    message: "今月の判定回数が上限に達しました",
-    time: "3時間前",
-    read: false,
-    icon: "🔴",
-  },
-  {
-    id: 2,
-    type: "detection",
-    title: "判定が完了しました",
-    message: "田中太郎が「外壁スレート」を判定しました",
-    time: "5時間前",
-    read: false,
-    icon: "🔵",
-  },
-  {
-    id: 3,
-    type: "card",
-    title: "カードの有効期限が近づいています",
-    message: "登録されているカードの有効期限が来月末です",
-    time: "1日前",
-    read: true,
-    icon: "🟡",
-  },
-]
+import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 export function DashboardHeader() {
   const router = useRouter()
-  const [unreadCount, setUnreadCount] = useState(notifications.filter((n) => !n.read).length)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const handleMenuClick = () => {
     router.push("/account")
   }
+
+  const handleUnreadCountChange = useCallback((count: number) => {
+    setUnreadCount(count)
+  }, [])
 
   return (
     <header className="relative bg-gradient-to-br from-emerald-500 via-emerald-500 to-teal-500 overflow-hidden">
@@ -96,38 +70,7 @@ export function DashboardHeader() {
                 <SheetHeader>
                   <SheetTitle className="text-lg font-bold">通知</SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-10rem)] mt-4">
-                  <div className="space-y-3">
-                    {notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 rounded-lg border transition-all ${
-                          notification.read
-                            ? "bg-gray-50 opacity-70 border-gray-200"
-                            : "bg-white border-emerald-200 shadow-sm"
-                        } cursor-pointer hover:shadow-md hover:border-emerald-300`}
-                      >
-                        <div className="flex gap-3">
-                          <span className="text-2xl flex-shrink-0">{notification.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm text-gray-900">{notification.title}</h4>
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{notification.message}</p>
-                            <p className="text-xs text-gray-400 mt-2">{notification.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-                <div className="mt-4 space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full bg-transparent hover:bg-emerald-50"
-                    onClick={() => setUnreadCount(0)}
-                  >
-                    すべて既読にする
-                  </Button>
-                </div>
+                <NotificationPanel onUnreadCountChange={handleUnreadCountChange} />
               </SheetContent>
             </Sheet>
 
