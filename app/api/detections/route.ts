@@ -8,6 +8,7 @@ import { detectAsbestos } from "@/lib/ai/client"
 import { createClient } from "@supabase/supabase-js"
 import { uploadImageToStorage } from "@/lib/storage/upload"
 import { drawBoundingBoxes, generateThumbnail } from "@/lib/images/process"
+import sharp from "sharp"
 
 // GET /api/detections - 判定一覧取得
 export async function GET(request: NextRequest) {
@@ -247,8 +248,10 @@ export async function POST(request: NextRequest) {
     // 判定結果集約
     const hasAsbestos = aiResults.some((r) => r.has_asbestos)
     const avgConfidence = aiResults.reduce((sum, r) => sum + r.confidence, 0) / aiResults.length
+    const totalDetectionCount = aiResults.reduce((sum, r) => sum + r.detection_count, 0)
+    const totalProcessingTime = aiResults.reduce((sum, r) => sum + (r.processing_time_ms || 0), 0)
 
-    console.log("[v0] Overall result:", hasAsbestos, "avg confidence:", avgConfidence)
+    console.log("[v0] Overall result:", hasAsbestos, "avg confidence:", avgConfidence, "detection_count:", totalDetectionCount)
 
     const { error: updateError } = await supabaseAdmin
       .from("detections")
@@ -256,6 +259,8 @@ export async function POST(request: NextRequest) {
         result: hasAsbestos,
         confidence: avgConfidence,
         ai_model_version: aiResults[0].model_version || "unknown",
+        detection_count: totalDetectionCount,
+        processing_time_ms: totalProcessingTime,
       })
       .eq("id", detection.id)
 
@@ -321,6 +326,17 @@ export async function POST(request: NextRequest) {
           // サムネイル生成エラーは続行（元画像は保存）
         }
 
+        // Sharp metadataから画像寸法を取得（EXIF回転適用後）
+        let imgWidth: number | null = null
+        let imgHeight: number | null = null
+        try {
+          const meta = await sharp(originalBuffer).rotate().metadata()
+          imgWidth = meta.width || null
+          imgHeight = meta.height || null
+        } catch (metaError) {
+          console.error(`[v0] Error reading image metadata:`, metaError)
+        }
+
         // detection_imagesテーブルに保存
         const { data: detectionImage, error: imageError } = await supabaseAdmin
           .from("detection_images")
@@ -329,8 +345,12 @@ export async function POST(request: NextRequest) {
             original_url: imageUrl,
             bb_url: bbUrl,
             thumbnail_url: thumbnailUrl,
-            filename: image.filename,
-            order_index: i,
+            caption: image.filename,
+            order: i,
+            width: imgWidth,
+            height: imgHeight,
+            file_size: originalBuffer.length,
+            mime_type: `image/${(image.filename.split(".").pop()?.toLowerCase() || "jpg") === "jpg" ? "jpeg" : image.filename.split(".").pop()?.toLowerCase() || "jpeg"}`,
           })
           .select()
           .single()

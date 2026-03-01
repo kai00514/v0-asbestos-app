@@ -199,6 +199,8 @@ export interface Database {
           result: boolean
           confidence: number
           ai_model_version: string | null
+          detection_count: number
+          processing_time_ms: number | null
           location: unknown | null
           address: string | null
           location_accuracy: number | null
@@ -219,6 +221,8 @@ export interface Database {
           result: boolean
           confidence: number
           ai_model_version?: string | null
+          detection_count?: number
+          processing_time_ms?: number | null
           location?: unknown | null
           address?: string | null
           location_accuracy?: number | null
@@ -239,6 +243,8 @@ export interface Database {
           result?: boolean
           confidence?: number
           ai_model_version?: string | null
+          detection_count?: number
+          processing_time_ms?: number | null
           location?: unknown | null
           address?: string | null
           location_accuracy?: number | null
@@ -321,6 +327,50 @@ export interface Database {
             columns: ["detection_id"]
             isOneToOne: false
             referencedRelation: "detections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bounding_boxes: {
+        Row: {
+          id: string
+          detection_image_id: string
+          x: number
+          y: number
+          width: number
+          height: number
+          confidence: number
+          class_name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          detection_image_id: string
+          x: number
+          y: number
+          width: number
+          height: number
+          confidence: number
+          class_name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          detection_image_id?: string
+          x?: number
+          y?: number
+          width?: number
+          height?: number
+          confidence?: number
+          class_name?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bounding_boxes_detection_image_id_fkey"
+            columns: ["detection_image_id"]
+            isOneToOne: false
+            referencedRelation: "detection_images"
             referencedColumns: ["id"]
           },
         ]

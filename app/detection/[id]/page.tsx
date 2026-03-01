@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { ImageGallery } from "@/components/detection/image-gallery"
+import { DetectionAnalytics } from "@/components/detection/detection-analytics"
 import { DetectionMetadata } from "@/components/detection/detection-metadata"
 import { DetectionActions } from "@/components/detection/detection-actions"
 import { BottomNav } from "@/components/layout/bottom-nav"
@@ -22,6 +23,7 @@ export default async function DetectionDetailPage({ params }: { params: Promise<
 
       <main className="container mx-auto px-4 py-6 max-w-4xl space-y-6">
         <ImageGallery detectionId={id} />
+        <DetectionAnalytics id={id} />
         <DetectionMetadata id={id} />
         <DetectionActions id={id} />
       </main>
