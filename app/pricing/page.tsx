@@ -19,6 +19,9 @@ export default async function PricingPage() {
       <WaveHeader title="料金プラン" showLogo={false} />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-6 text-sm text-yellow-700 text-center">
+          決済機能はまだ実装されていません。現在すべてのプランは表示のみとなっています。
+        </div>
         <PricingCards />
         <PricingFAQ />
       </main>
