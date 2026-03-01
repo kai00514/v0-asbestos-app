@@ -130,23 +130,27 @@ export function CompletionResult({ detectionId }: { detectionId: string }) {
   return (
     <div className="space-y-6">
       {/* 結果バッジ */}
-      <Card className="text-center">
-        <CardContent className="pt-8 pb-8">
-          <div
-            className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-              detection.result ? "bg-red-100" : "bg-emerald-100"
-            }`}
-          >
-            {detection.result ? (
-              <AlertTriangle className="w-12 h-12 text-red-600" />
-            ) : (
-              <CheckCircle className="w-12 h-12 text-emerald-600" />
-            )}
+      <Card>
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center gap-4">
+            <div
+              className={`flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full ${
+                detection.result ? "bg-red-100" : "bg-emerald-100"
+              }`}
+            >
+              {detection.result ? (
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              ) : (
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">判定完了</h2>
+              <Badge variant={detection.result ? "destructive" : "default"} className="text-sm px-3 py-0.5 mt-1">
+                {result}
+              </Badge>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">判定完了</h2>
-          <Badge variant={detection.result ? "destructive" : "default"} className="text-xl px-6 py-2">
-            {result}
-          </Badge>
         </CardContent>
       </Card>
 

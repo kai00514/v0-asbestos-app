@@ -10,18 +10,6 @@ export interface BoundingBox {
 }
 
 /**
- * XMLの特殊文字をエスケープする
- */
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;")
-}
-
-/**
  * バウンディングボックスを画像に描画する
  * @param imageBuffer 元画像のBuffer
  * @param boundingBoxes BB座標の配列
@@ -31,17 +19,17 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
   try {
     console.log(`[v0] drawBoundingBoxes: Processing ${boundingBoxes.length} bounding boxes`)
 
-    // rotate()を呼ぶことでEXIF orientationを適用し、元画像と同じ向きにする
-    const image = sharp(imageBuffer).rotate()
-    const metadata = await sharp(imageBuffer).rotate().metadata()
+    // 画像のメタデータを取得
+    const image = sharp(imageBuffer)
+    const metadata = await image.metadata()
     const imageWidth = metadata.width!
     const imageHeight = metadata.height!
 
-    console.log(`[v0] Image dimensions (after rotation): ${imageWidth}x${imageHeight}`)
+    console.log(`[v0] Image dimensions: ${imageWidth}x${imageHeight}`)
 
     if (boundingBoxes.length === 0) {
-      console.log(`[v0] No bounding boxes to draw, returning rotated image`)
-      return image.toBuffer()
+      console.log(`[v0] No bounding boxes to draw, returning original image`)
+      return imageBuffer
     }
 
     // SVGでバウンディングボックスを描画
@@ -49,16 +37,15 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
 
     console.log(`[v0] Generated SVG overlay`)
 
-    // EXIF回転適用済み画像にSVGを重ねる
+    // 元画像にSVGを重ねる
     const processedImage = await image
       .composite([
         {
-          input: Buffer.from(svgOverlay, "utf-8"),
+          input: Buffer.from(svgOverlay),
           top: 0,
           left: 0,
         },
       ])
-      .jpeg({ quality: 90 })
       .toBuffer()
 
     console.log(`[v0] Successfully drew bounding boxes`)
@@ -70,42 +57,9 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
 }
 
 /**
- * BB描画の色を信頼度に応じて決定
- */
-function getBoxColor(confidence: number): { stroke: string; fill: string; glow: string } {
-  if (confidence >= 0.8) {
-    return { stroke: "#ef4444", fill: "#dc2626", glow: "rgba(239,68,68,0.3)" }
-  } else if (confidence >= 0.6) {
-    return { stroke: "#f59e0b", fill: "#d97706", glow: "rgba(245,158,11,0.3)" }
-  }
-  return { stroke: "#eab308", fill: "#ca8a04", glow: "rgba(234,179,8,0.3)" }
-}
-
-/**
- * SVG形式でバウンディングボックスを生成（リッチプレビュー版）
+ * SVG形式でバウンディングボックスを生成
  */
 function generateBoundingBoxSVG(boundingBoxes: BoundingBox[], imageWidth: number, imageHeight: number): string {
-  // ストローク幅は画像サイズに応じて調整
-  const baseStrokeWidth = Math.max(3, Math.round(Math.min(imageWidth, imageHeight) / 200))
-  const fontSize = Math.max(14, Math.round(Math.min(imageWidth, imageHeight) / 60))
-  const labelPadding = Math.round(fontSize * 0.4)
-  const labelHeight = fontSize + labelPadding * 2
-
-  const defs = `
-    <defs>
-      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="3" result="blur"/>
-        <feMerge>
-          <feMergeNode in="blur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-        <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.5"/>
-      </filter>
-    </defs>
-  `
-
   const boxes = boundingBoxes
     .map((bb, index) => {
       // BBの座標は中心点(x, y)とwidth, heightで表現されている
@@ -113,36 +67,18 @@ function generateBoundingBoxSVG(boundingBoxes: BoundingBox[], imageWidth: number
       const top = bb.y - bb.height / 2
       const width = bb.width
       const height = bb.height
-      const colors = getBoxColor(bb.confidence)
 
-      // ラベルテキスト（日本語対応のためエスケープ）
-      const label = escapeXml(`${bb.class} ${(bb.confidence * 100).toFixed(1)}%`)
-      const labelWidth = label.length * fontSize * 0.6 + labelPadding * 2
+      // 信頼度に応じて色を変更
+      const color = bb.confidence >= 0.8 ? "#ef4444" : bb.confidence >= 0.6 ? "#f59e0b" : "#eab308"
 
-      // ラベルの位置（上に配置、画像外にはみ出す場合は下に配置）
-      const labelY = top - labelHeight - 4 >= 0 ? top - labelHeight - 4 : top + height + 4
-      const labelTextY = labelY + labelHeight - labelPadding
+      // ラベルテキスト
+      const label = `${bb.class} ${(bb.confidence * 100).toFixed(1)}%`
 
-      return `
-        <rect x="${left}" y="${top}" width="${width}" height="${height}"
-          fill="${colors.glow}" fill-opacity="0.15" rx="2" ry="2"/>
-        <rect x="${left}" y="${top}" width="${width}" height="${height}"
-          fill="none" stroke="${colors.stroke}" stroke-width="${baseStrokeWidth}"
-          stroke-opacity="0.95" rx="2" ry="2" filter="url(#glow)"/>
-        <rect x="${left}" y="${top}" width="${width}" height="${height}"
-          fill="none" stroke="white" stroke-width="${Math.max(1, baseStrokeWidth - 2)}"
-          stroke-opacity="0.3" rx="2" ry="2"/>
-        <rect x="${left}" y="${labelY}" width="${labelWidth}" height="${labelHeight}"
-          fill="${colors.fill}" fill-opacity="0.9" rx="4" ry="4" filter="url(#shadow)"/>
-        <text x="${left + labelPadding}" y="${labelTextY}"
-          font-family="'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Arial, sans-serif"
-          font-size="${fontSize}" font-weight="bold" fill="white"
-          text-rendering="optimizeLegibility">${label}</text>
-      `
+      return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="none" stroke="${color}" stroke-width="4" stroke-opacity="0.9"/><rect x="${left}" y="${top - 30}" width="${label.length * 8 + 10}" height="25" fill="${color}" fill-opacity="0.8"/><text x="${left + 5}" y="${top - 10}" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">${label}</text>`
     })
     .join("\n")
 
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">${defs}${boxes}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">${boxes}</svg>`
 }
 
 /**
@@ -156,7 +92,6 @@ export async function generateThumbnail(imageBuffer: Buffer, size: number = 300)
     console.log(`[v0] generateThumbnail: Generating ${size}x${size} thumbnail`)
 
     const thumbnail = await sharp(imageBuffer)
-      .rotate()
       .resize(size, size, {
         fit: "cover",
         position: "center",
@@ -193,7 +128,7 @@ export async function optimizeImage(
     const metadata = await sharp(imageBuffer).metadata()
     const needsResize = (metadata.width || 0) > maxWidth || (metadata.height || 0) > maxHeight
 
-    let image = sharp(imageBuffer).rotate()
+    let image = sharp(imageBuffer)
 
     if (needsResize) {
       console.log(`[v0] Image needs resizing from ${metadata.width}x${metadata.height}`)

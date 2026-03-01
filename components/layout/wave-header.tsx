@@ -87,7 +87,7 @@ export function WaveHeader({ title, showBackButton = false, showLogo = true }: W
               </SheetContent>
             </Sheet>
 
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full" onClick={() => router.push("/account")}>
               <Menu className="h-5 w-5" />
             </Button>
           </div>

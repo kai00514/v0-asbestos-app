@@ -100,7 +100,7 @@ export function AIDetectionForm() {
           site_name: siteName,
           address: location || undefined,
           notes: notes || undefined,
-          location: location
+          location: location && location.includes(",")
             ? {
                 latitude: Number.parseFloat(location.split(",")[0].trim()),
                 longitude: Number.parseFloat(location.split(",")[1].trim()),

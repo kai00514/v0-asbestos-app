@@ -25,36 +25,124 @@ export interface LabData {
   rating: number | null
   review_count: number | null
   is_featured: boolean
+  postal_code: string | null
 }
 
-async function getLabs(): Promise<LabData[]> {
+type SortOption = "rating" | "price" | "delivery" | "track-record"
+type DeliveryFilter = "all" | "immediate" | "3days" | "1week"
+
+async function getLabs(params: {
+  prefectures?: string[]
+  search?: string
+  sort?: SortOption
+  delivery?: DeliveryFilter
+  zipcode?: string
+}): Promise<LabData[]> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   )
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("labs")
     .select(
-      "id, name, description, address, prefecture, city, phone, email, website_url, delivery_days_min, delivery_days_max, price_min, price_max, service_area, certifications, track_record, rating, review_count, is_featured"
+      "id, name, description, address, prefecture, city, phone, email, website_url, delivery_days_min, delivery_days_max, price_min, price_max, service_area, certifications, track_record, rating, review_count, is_featured, postal_code"
     )
     .eq("is_active", true)
-    .order("is_featured", { ascending: false })
-    .order("rating", { ascending: false })
+
+  // Prefecture filter
+  if (params.prefectures && params.prefectures.length > 0) {
+    query = query.in("prefecture", params.prefectures)
+  }
+
+  // Text search (name, address, city, prefecture)
+  if (params.search) {
+    query = query.or(
+      `name.ilike.%${params.search}%,address.ilike.%${params.search}%,city.ilike.%${params.search}%,prefecture.ilike.%${params.search}%`
+    )
+  }
+
+  // Delivery filter
+  const del = params.delivery || "all"
+  if (del === "immediate") {
+    query = query.lte("delivery_days_min", 1)
+  } else if (del === "3days") {
+    query = query.lte("delivery_days_min", 3)
+  } else if (del === "1week") {
+    query = query.lte("delivery_days_min", 7)
+  }
+
+  // Sort (when zipcode is set, sorting is done client-side)
+  if (!params.zipcode) {
+    const sort = params.sort || "rating"
+    switch (sort) {
+      case "price":
+        query = query
+          .order("is_featured", { ascending: false })
+          .order("price_min", { ascending: true, nullsFirst: false })
+        break
+      case "delivery":
+        query = query
+          .order("is_featured", { ascending: false })
+          .order("delivery_days_min", { ascending: true, nullsFirst: false })
+        break
+      case "track-record":
+        query = query
+          .order("is_featured", { ascending: false })
+          .order("track_record", { ascending: false, nullsFirst: false })
+        break
+      case "rating":
+      default:
+        query = query
+          .order("is_featured", { ascending: false })
+          .order("rating", { ascending: false })
+        break
+    }
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error("[v0] Labs fetch error:", error)
     return []
   }
 
-  return (data as LabData[]) || []
+  const labs = (data as LabData[]) || []
+
+  // 郵便番号が指定されている場合、全labを郵便番号の近さでソート
+  if (params.zipcode) {
+    const targetZip = parseInt(params.zipcode, 10)
+    if (!isNaN(targetZip)) {
+      labs.sort((a, b) => {
+        // おすすめを優先
+        const aFeatured = a.is_featured ? 0 : 1
+        const bFeatured = b.is_featured ? 0 : 1
+        if (aFeatured !== bFeatured) return aFeatured - bFeatured
+
+        const aZip = a.postal_code ? parseInt(a.postal_code.replace(/[-ー－]/g, ""), 10) : NaN
+        const bZip = b.postal_code ? parseInt(b.postal_code.replace(/[-ー－]/g, ""), 10) : NaN
+        const aDiff = isNaN(aZip) ? Infinity : Math.abs(aZip - targetZip)
+        const bDiff = isNaN(bZip) ? Infinity : Math.abs(bZip - targetZip)
+        return aDiff - bDiff
+      })
+    }
+  }
+
+  return labs
 }
 
 export default async function LabsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ detectionId?: string }>
+  searchParams: Promise<{
+    detectionId?: string
+    prefecture?: string | string[]
+    search?: string
+    sort?: string
+    delivery?: string
+    zipcode?: string
+  }>
 }) {
   const resolvedParams = await searchParams
   const supabase = await getSupabaseServerClient()
@@ -62,7 +150,20 @@ export default async function LabsPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const labs = await getLabs()
+  // Normalize prefecture to array
+  const prefectures = resolvedParams.prefecture
+    ? Array.isArray(resolvedParams.prefecture)
+      ? resolvedParams.prefecture
+      : [resolvedParams.prefecture]
+    : []
+
+  const labs = await getLabs({
+    prefectures,
+    search: resolvedParams.search,
+    sort: (resolvedParams.sort as SortOption) || "rating",
+    delivery: (resolvedParams.delivery as DeliveryFilter) || "all",
+    zipcode: resolvedParams.zipcode,
+  })
 
   return (
     <div className="min-h-screen bg-gray-300 pb-24 md:pb-6">

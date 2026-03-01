@@ -3,30 +3,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Download, RotateCcw, Share2, Eye, Camera, List, Building2 } from "lucide-react"
-import { toast } from "sonner"
+import { RotateCcw, Eye, Camera, List, Building2 } from "lucide-react"
 
 export function CompletionActions({ detectionId }: { detectionId: string }) {
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "判定結果: 外壁 スレート版",
-          text: "判定結果: 含有あり、信頼度: 92%",
-          url: window.location.href,
-        })
-      } catch (error) {
-        console.error("[v0] Share error:", error)
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href)
-      toast.success("URLをコピーしました")
-    }
-  }
-
-  const handleDownloadPDF = () => {
-    toast.success("PDFを生成中...")
-  }
 
   return (
     <div className="space-y-6">
@@ -39,18 +18,7 @@ export function CompletionActions({ detectionId }: { detectionId: string }) {
           </Link>
         </Button>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" onClick={handleDownloadPDF} className="h-11 bg-transparent">
-            <Download className="w-4 h-4 mr-2" />
-            PDF作成
-          </Button>
-          <Button variant="outline" onClick={handleShare} className="h-11 bg-transparent">
-            <Share2 className="w-4 h-4 mr-2" />
-            共有
-          </Button>
-        </div>
-
-        <Button asChild variant="outline" className="w-full h-11 bg-transparent">
+        <Button asChild variant="outline" className="w-full h-11 border-emerald-600 text-emerald-700 hover:bg-emerald-50">
           <Link href="/ai">
             <RotateCcw className="w-4 h-4 mr-2" />
             再判定
