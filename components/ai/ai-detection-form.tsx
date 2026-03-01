@@ -78,17 +78,10 @@ export function AIDetectionForm() {
     setProgress({ current: 0, total: images.length, stage: "画像を変換中" })
 
     try {
-      const imagePromises = images.map((file) => {
-        return new Promise<{ data: string; filename: string }>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve({ data: reader.result as string, filename: file.name })
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        })
-      })
-
-      const base64Images = await Promise.all(imagePromises)
-      console.log("[v0] Converted", base64Images.length, "images to base64")
+      const base64Images = await Promise.all(
+        images.map((file) => compressImage(file))
+      )
+      console.log("[v0] Compressed", base64Images.length, "images")
 
       setProgress({ current: 0, total: images.length, stage: "AI解析中" })
 
@@ -282,4 +275,38 @@ export function AIDetectionForm() {
       </Button>
     </form>
   )
+}
+
+const MAX_DIMENSION = 2000
+const JPEG_QUALITY = 0.85
+
+function compressImage(file: File): Promise<{ data: string; filename: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+
+      // 長辺がMAX_DIMENSIONを超える場合のみリサイズ
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        if (width > height) {
+          height = Math.round(height * (MAX_DIMENSION / width))
+          width = MAX_DIMENSION
+        } else {
+          width = Math.round(width * (MAX_DIMENSION / height))
+          height = MAX_DIMENSION
+        }
+      }
+
+      const canvas = document.createElement("canvas")
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext("2d")!
+      ctx.drawImage(img, 0, 0, width, height)
+
+      const data = canvas.toDataURL("image/jpeg", JPEG_QUALITY)
+      resolve({ data, filename: file.name })
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
 }

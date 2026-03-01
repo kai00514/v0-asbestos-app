@@ -19,8 +19,10 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
   try {
     console.log(`[v0] drawBoundingBoxes: Processing ${boundingBoxes.length} bounding boxes`)
 
-    // 画像のメタデータを取得
-    const image = sharp(imageBuffer)
+    // EXIF回転を適用してからメタデータを取得
+    // ブラウザCanvas（クライアント側圧縮）やRoboflow APIはEXIF回転済みの画像を扱うため、
+    // Sharp側でも.rotate()で自動回転させて座標系を一致させる
+    const image = sharp(imageBuffer).rotate()
     const metadata = await image.metadata()
     const imageWidth = metadata.width!
     const imageHeight = metadata.height!
@@ -28,8 +30,8 @@ export async function drawBoundingBoxes(imageBuffer: Buffer, boundingBoxes: Boun
     console.log(`[v0] Image dimensions: ${imageWidth}x${imageHeight}`)
 
     if (boundingBoxes.length === 0) {
-      console.log(`[v0] No bounding boxes to draw, returning original image`)
-      return imageBuffer
+      console.log(`[v0] No bounding boxes to draw, returning rotated image`)
+      return await image.toBuffer()
     }
 
     // SVGでバウンディングボックスを描画
@@ -92,6 +94,7 @@ export async function generateThumbnail(imageBuffer: Buffer, size: number = 300)
     console.log(`[v0] generateThumbnail: Generating ${size}x${size} thumbnail`)
 
     const thumbnail = await sharp(imageBuffer)
+      .rotate()
       .resize(size, size, {
         fit: "cover",
         position: "center",
@@ -125,10 +128,11 @@ export async function optimizeImage(
   try {
     console.log(`[v0] optimizeImage: Optimizing image (max: ${maxWidth}x${maxHeight})`)
 
-    const metadata = await sharp(imageBuffer).metadata()
+    const rotated = sharp(imageBuffer).rotate()
+    const metadata = await rotated.metadata()
     const needsResize = (metadata.width || 0) > maxWidth || (metadata.height || 0) > maxHeight
 
-    let image = sharp(imageBuffer)
+    let image = sharp(imageBuffer).rotate()
 
     if (needsResize) {
       console.log(`[v0] Image needs resizing from ${metadata.width}x${metadata.height}`)

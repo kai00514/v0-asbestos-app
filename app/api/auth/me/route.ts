@@ -54,15 +54,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "ユーザー情報の取得に失敗しました" }, { status: 500 })
     }
 
-    const { data: settingsData, error: settingsError } = await supabaseAdmin
+    let { data: settingsData, error: settingsError } = await supabaseAdmin
       .from("user_settings")
       .select("onboarding_completed")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
     if (settingsError) {
       console.error("[v0] Settings error:", settingsError)
       return NextResponse.json({ error: "設定情報の取得に失敗しました" }, { status: 500 })
+    }
+
+    // user_settingsが存在しない場合は自動作成
+    if (!settingsData) {
+      console.log("[v0] Creating missing user_settings for:", user.id)
+      const { data: newSettings, error: insertError } = await supabaseAdmin
+        .from("user_settings")
+        .insert({ user_id: user.id, onboarding_completed: false })
+        .select("onboarding_completed")
+        .single()
+
+      if (insertError) {
+        console.error("[v0] Failed to create user_settings:", insertError)
+        return NextResponse.json({ error: "設定情報の作成に失敗しました" }, { status: 500 })
+      }
+      settingsData = newSettings
     }
 
     const emailConfirmed = !!user.email_confirmed_at
