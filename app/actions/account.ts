@@ -124,29 +124,70 @@ export async function inviteMember(data: { email: string; name: string; role: "o
   const { user } = await getAuthenticatedUser()
   const supabaseAdmin = getAdminClient()
 
-  console.log("[v0] Inviting member, inviter user ID:", user.id)
+  console.log("[v0] Adding member, inviter user ID:", user.id)
 
   const { data: currentUser } = await supabaseAdmin.from("users").select("company_id, role").eq("id", user.id).single()
 
   if (!currentUser || currentUser.role !== "owner") {
-    throw new Error("Only owners can invite members")
+    throw new Error("メンバーを追加する権限がありません")
   }
 
-  const token = crypto.randomUUID()
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7)
+  // メール重複チェック
+  const { data: existingUser } = await supabaseAdmin.from("users").select("id").eq("email", data.email).maybeSingle()
+  if (existingUser) {
+    throw new Error("このメールアドレスは既に登録されています")
+  }
 
-  const { error } = await supabaseAdmin.from("invite_tokens").insert({
-    company_id: currentUser.company_id,
+  // Supabase Auth でユーザー作成（メール確認済みとして作成）
+  const tempPassword = crypto.randomUUID().slice(0, 12)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: data.email,
-    role: data.role,
-    token,
-    expires_at: expiresAt.toISOString(),
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { name: data.name },
   })
 
-  if (error) throw error
+  if (authError) {
+    console.error("[v0] Auth user creation error:", authError)
+    throw new Error("アカウントの作成に失敗しました")
+  }
 
-  console.log("[v0] Invite email would be sent to:", data.email, "with token:", token)
+  if (!authData.user) {
+    throw new Error("アカウントの作成に失敗しました")
+  }
+
+  // usersテーブルに追加
+  const { error: userError } = await supabaseAdmin.from("users").insert({
+    id: authData.user.id,
+    email: data.email,
+    name: data.name,
+    company_id: currentUser.company_id,
+    role: data.role,
+    is_active: true,
+  })
+
+  if (userError) {
+    console.error("[v0] User record creation error:", userError)
+    // ロールバック: Auth ユーザーを削除
+    await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+    throw new Error("メンバー情報の保存に失敗しました")
+  }
+
+  // user_settings作成
+  await supabaseAdmin.from("user_settings").upsert(
+    {
+      user_id: authData.user.id,
+      detection_completed_notifications: true,
+      limit_notifications: true,
+      payment_notifications: true,
+      news_notifications: false,
+    },
+    { onConflict: "user_id" },
+  )
+
+  console.log("[v0] Member added successfully:", data.email)
 
   revalidatePath("/account")
+
+  return { tempPassword }
 }
