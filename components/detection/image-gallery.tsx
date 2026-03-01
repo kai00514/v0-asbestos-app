@@ -23,8 +23,8 @@ interface DetectionImage {
   original_url: string
   bb_url: string | null
   thumbnail_url: string | null
-  caption: string | null
-  order: number
+  filename: string | null
+  order_index: number
   width: number | null
   height: number | null
   bounding_boxes: BoundingBox[]
@@ -54,7 +54,7 @@ export function ImageGallery({ detectionId }: { detectionId: string }) {
           .from("detection_images")
           .select("*, bounding_boxes(*)")
           .eq("detection_id", detectionId)
-          .order("order", { ascending: true })
+          .order("order_index", { ascending: true })
 
         if (error) {
           console.error("ImageGallery - Error fetching images:", error)

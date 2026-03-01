@@ -11,8 +11,8 @@ interface BoundingBoxData {
 
 interface DetectionImageData {
   id: string
-  caption: string | null
-  order: number
+  filename: string | null
+  order_index: number
   bounding_boxes: BoundingBoxData[]
 }
 
@@ -40,7 +40,7 @@ async function getAnalyticsData(id: string): Promise<DetectionAnalyticsData | nu
       ai_model_version,
       detection_images(
         id,
-        caption,
+        filename,
         order,
         bounding_boxes(id, confidence, class_name, detection_image_id)
       )
@@ -152,7 +152,7 @@ export async function DetectionAnalytics({ id }: { id: string }) {
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">画像別検出数</h3>
             <div className="space-y-1.5">
               {data.detection_images
-                .sort((a, b) => a.order - b.order)
+                .sort((a, b) => a.order_index - b.order_index)
                 .map((img, idx) => (
                   <div key={img.id} className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">画像 {idx + 1}</span>

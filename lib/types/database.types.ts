@@ -285,8 +285,8 @@ export interface Database {
           original_url: string
           bb_url: string
           thumbnail_url: string | null
-          caption: string | null
-          order: number
+          filename: string | null
+          order_index: number
           width: number | null
           height: number | null
           file_size: number | null
@@ -299,8 +299,8 @@ export interface Database {
           original_url: string
           bb_url: string
           thumbnail_url?: string | null
-          caption?: string | null
-          order?: number
+          filename?: string | null
+          order_index?: number
           width?: number | null
           height?: number | null
           file_size?: number | null
@@ -313,8 +313,8 @@ export interface Database {
           original_url?: string
           bb_url?: string
           thumbnail_url?: string | null
-          caption?: string | null
-          order?: number
+          filename?: string | null
+          order_index?: number
           width?: number | null
           height?: number | null
           file_size?: number | null
