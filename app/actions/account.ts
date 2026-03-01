@@ -191,3 +191,38 @@ export async function inviteMember(data: { email: string; name: string; role: "o
 
   return { tempPassword }
 }
+
+export async function deleteAccount() {
+  const { user } = await getAuthenticatedUser()
+  const supabaseAdmin = getAdminClient()
+
+  console.log("[v0] Deleting account for user:", user.id)
+
+  // usersテーブルからユーザー情報を取得
+  const { data: userData } = await supabaseAdmin.from("users").select("id, company_id").eq("id", user.id).single()
+
+  if (!userData) {
+    throw new Error("ユーザー情報が見つかりません")
+  }
+
+  // user_settingsを削除
+  await supabaseAdmin.from("user_settings").delete().eq("user_id", user.id)
+
+  // usersテーブルから削除（会社は残す）
+  const { error: userDeleteError } = await supabaseAdmin.from("users").delete().eq("id", user.id)
+
+  if (userDeleteError) {
+    console.error("[v0] User record delete error:", userDeleteError)
+    throw new Error("アカウントの削除に失敗しました")
+  }
+
+  // Supabase Authからユーザーを削除
+  const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
+
+  if (authDeleteError) {
+    console.error("[v0] Auth user delete error:", authDeleteError)
+    throw new Error("認証情報の削除に失敗しました")
+  }
+
+  console.log("[v0] Account deleted successfully:", user.id)
+}

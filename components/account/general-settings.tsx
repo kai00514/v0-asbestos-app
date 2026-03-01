@@ -1,15 +1,35 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { FileText, Trash2, Mail } from "lucide-react"
+import { FileText, Trash2 } from "lucide-react"
 import { ContactDialog } from "./contact-dialog"
 import { FAQDialog } from "./faq-dialog"
+import { deleteAccount } from "@/app/actions/account"
+import { toast } from "sonner"
 
 export function GeneralSettings() {
+  const router = useRouter()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState("")
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      toast.success("アカウントを削除しました")
+      router.push("/login")
+    } catch (error: any) {
+      toast.error(error.message || "アカウントの削除に失敗しました")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <Card>
@@ -60,29 +80,50 @@ export function GeneralSettings() {
         </div>
       </CardContent>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open)
+        if (!open) setConfirmText("")
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>アカウント削除について</DialogTitle>
+            <DialogTitle>アカウントの削除</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              現在、アカウント削除機能は実装されていません。
-              アカウントの削除をご希望の場合は、お手数ですがお問い合わせください。
-            </p>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <Mail className="w-4 h-4 text-emerald-600" />
-                <span className="font-medium">support@example.com</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">サポート時間: 平日 9:00〜18:00</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-700 font-medium">この操作は取り消せません。</p>
+              <p className="text-sm text-red-600 mt-1">
+                あなたのアカウントが完全に削除されます。会社データや他のメンバーには影響しません。
+              </p>
             </div>
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
-            >
-              閉じる
-            </Button>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                確認のため「<span className="font-mono font-medium">削除する</span>」と入力してください。
+              </p>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="削除する"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteDialogOpen(false)
+                  setConfirmText("")
+                }}
+                disabled={deleting}
+              >
+                キャンセル
+              </Button>
+              <Button
+                onClick={handleDelete}
+                disabled={confirmText !== "削除する" || deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? "削除中..." : "アカウントを削除"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
