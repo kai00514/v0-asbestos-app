@@ -13,8 +13,7 @@ export function DetectionActions({ id }: { id: string }) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleDownloadPDF = () => {
-    toast.success("PDFを生成中...")
-    // PDF生成ロジック
+    toast.info("この機能はまだ実装されていません。今後のアップデートをお待ちください。")
   }
 
   const handleReportFalsePositive = () => {
