@@ -8,15 +8,37 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2 } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSuccess(true)
+    setLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error?.message || "送信に失敗しました")
+      }
+
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "送信に失敗しました")
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (success) {
@@ -62,11 +84,11 @@ export default function ForgotPasswordPage() {
         </CardHeader>
         <form onSubmit={handleResetPassword}>
           <CardContent className="space-y-4">
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertDescription className="text-amber-800">
-                <strong>デモモード:</strong> 現在、認証機能は無効化されています。
-              </AlertDescription>
-            </Alert>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">メールアドレス</Label>
               <Input
@@ -81,8 +103,13 @@ export default function ForgotPasswordPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-              リセットメールを送信
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+            >
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {loading ? "送信中..." : "リセットメールを送信"}
             </Button>
             <Button asChild variant="ghost" className="w-full">
               <Link href="/login">ログインページに戻る</Link>

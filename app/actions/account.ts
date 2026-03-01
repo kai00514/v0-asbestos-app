@@ -65,21 +65,21 @@ export async function updateAccountInfo(data: {
 }
 
 export async function changeEmail(newEmail: string) {
-  const { user } = await getAuthenticatedUser()
-  const supabaseAdmin = getAdminClient()
+  const { user, supabase } = await getAuthenticatedUser()
 
   console.log("[v0] Changing email for user:", user.id)
 
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-    email: newEmail,
-  })
+  const { error } = await supabase.auth.updateUser(
+    { email: newEmail },
+    { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+  )
 
   if (error) {
     console.log("[v0] Email change error:", error)
     throw error
   }
 
-  console.log("[v0] Email changed successfully")
+  console.log("[v0] Confirmation email sent to:", newEmail)
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {

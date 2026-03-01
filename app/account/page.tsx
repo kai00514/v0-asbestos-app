@@ -7,8 +7,8 @@ import { NotificationSettings } from "@/components/account/notification-settings
 import { TeamManagement } from "@/components/account/team-management"
 import { GeneralSettings } from "@/components/account/general-settings"
 import { ReferralProgram } from "@/components/account/referral-program"
+import { LogoutButton } from "@/components/account/logout-button"
 import { BottomNav } from "@/components/layout/bottom-nav"
-import { Button } from "@/components/ui/button"
 import { WaveHeader } from "@/components/layout/wave-header"
 
 export default async function AccountPage() {
@@ -36,9 +36,7 @@ export default async function AccountPage() {
         <GeneralSettings />
 
         <div className="pt-6">
-          <Button variant="outline" className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent">
-            ログアウト
-          </Button>
+          <LogoutButton />
         </div>
       </main>
 
